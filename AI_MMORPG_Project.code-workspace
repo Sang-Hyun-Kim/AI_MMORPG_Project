@@ -1,0 +1,34 @@
+{
+    "folders": [
+        {
+            "name": "MMORPG_Monorepo",
+            "path": "."
+        }
+    ],
+    "settings": {
+        "files.exclude": {
+            "**/.git": true,
+            "**/.vs": true,
+            "**/Client/Intermediate": true,
+            "**/Client/Saved": true,
+            "**/Client/Binaries": true,
+            "**/Client/DerivedDataCache": true,
+            "**/WebBackend/bin": true,
+            "**/WebBackend/obj": true,
+            "**/Server/x64": true,
+            "**/Server/Debug": true,
+            "**/Server/Release": true
+        },
+        "search.exclude": {
+            "**/Client/Intermediate": true,
+            "**/Client/Saved": true,
+            "**/Client/Binaries": true,
+            "**/Client/DerivedDataCache": true,
+            "**/WebBackend/bin": true,
+            "**/WebBackend/obj": true,
+            "**/Server/x64": true
+        },
+        "C_Cpp.default.cppStandard": "c++20",
+        "editor.formatOnSave": true
+    }
+}

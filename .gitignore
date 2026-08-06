@@ -1,0 +1,87 @@
+# ============================================================================
+# C++ & Visual Studio (Server)
+# ============================================================================
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+Debug/
+Release/
+x64/
+x86/
+build/
+bin/
+obj/
+*.obj
+*.exe
+*.dll
+*.lib
+*.pdb
+*.ilk
+*.idb
+
+# ============================================================================
+# Unreal Engine 5 (Client)
+# ============================================================================
+Client/Binaries/
+Client/Build/
+Client/DerivedDataCache/
+Client/Intermediate/
+Client/Saved/
+Client/.idea/
+Client/.vscode/
+Client/.vs/
+Client/*.sln
+Client/*.suo
+Client/*.opensdf
+Client/*.sdf
+Client/*.xcworkspace
+
+# ============================================================================
+# C# ASP.NET Core (WebBackend)
+# ============================================================================
+[Bb]in/
+[Oo]bj/
+*.userprefs
+*.DS_Store
+
+# ============================================================================
+# Python (Protobuf Generator Scripts)
+# ============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+.eggs/
+
+# ============================================================================
+# AI Agents & IDE
+# ============================================================================
+# NOTE: .cursorrules and CLAUDE.md are tracked by design
+.idea/
+.vscode/
+.ai_cache/
+.gemini/
+.cursor/
+.clangd/
+compile_commands.json
+
+# AI Logs (개인 진행 로그, 인수인계, 개인 학습 로그 파일은 원격에 미포함)
+Docs/ProgressLogs/
+Docs/AI_HANDOFF.md
+Docs/Cpp20_Migration_Guide.md
+
+# ============================================================================
+# Project Specific
+# ============================================================================
+# 무시할 과거 레퍼런스 프로젝트 디렉토리
+Reference/
+LegacyProject/
+
+# Package Manager
+vcpkg/
+install_protobuf_vcpkg.ps1

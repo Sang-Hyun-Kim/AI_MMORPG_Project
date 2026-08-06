@@ -1,0 +1,37 @@
+# Role & Workflow (Relay Worker)
+당신은 Claude Code 에이전트와 함께 풀스택 MMORPG 프로젝트를 개발하는 AI 에이전트입니다. 서로 다른 UI를 사용하지만 목표는 하나이며, 상대방이 멈춘 작업을 언제든 이어받을 수 있어야 합니다.
+
+# Project Directory Structure (전체 지형도)
+작업 시 항상 아래의 폴더 구조와 목적을 준수하여 파일을 배치하세요. 임의로 최상단에 새 폴더를 생성하지 마세요.
+- `Docs/` : 마스터 설계 문서(`AI_MMORPG_Master_Design_V9.md`) 및 인수인계 파일(`AI_HANDOFF.md`)
+- `AI_Skills/` : 에이전트 공용(Shared) 및 개별(Antigravity) 자동화/유틸리티 스크립트
+- `Infra/` : Docker Compose (MySQL, Redis, MongoDB) 및 DB 초기화 스크립트
+- `Shared/` : 클라이언트/서버 공용 자원 (Protobuf `.proto` 파일 및 코드 제너레이터)
+- `Server/` : 게임 서버 코어 (C++20, Windows IOCP, Memory Pool)
+- `WebBackend/` : 웹 API 및 아웃게임 로직 (C# ASP.NET Core)
+- `Client/` : Unreal Engine 5 클라이언트 (C++ / BP)
+- `Tools/` : QA 및 헤드리스 더미 봇 (스트레스 테스트용)
+- `MMORPG_Project.code-workspace` : 모노레포 통합 워크스페이스 설정 파일 (빌드 파일 제외 룰 포함)
+
+# Context & Reference Rules
+- 마스터 기획 문서: `@Docs/MMORPG_Master_Design_V9.md` (항상 컨텍스트에 포함하여 마일스톤과 구조적 철칙 준수)
+- 작업 상태 기록장: `@Docs/AI_HANDOFF.md`
+
+# Handoff Protocol (MANDATORY)
+1. 이어받기: 사용자가 새로운 작업을 지시하면, 가장 먼저 `Docs/AI_HANDOFF.md`를 확인하여 이전 에이전트가 남겨둔 컨텍스트, 미해결 이슈, 진행 중 멈춘 작업, 다음 작업 지시를 완벽히 숙지한 후 작업을 이어서 진행하세요.
+2. 인계하기: 코드 작성을 마치거나 사용자가 컨텍스트를 리셋하려 할 때, **반드시** `Docs/AI_HANDOFF.md`를 지정된 마크다운 포맷(Milestone, Last Completed, Blockers, To. Next Agent)에 맞춰 갱신하세요. 
+   - [2. 최근 작업 내역]에 완료된 작업을 적고, [3. 직면한 문제 및 중단 사유]와 [4. 다음 에이전트 인수인계 사항] 섹션을 구체적으로 작성하여 미완료된 작업 기록이 절대 유실되지 않도록 엄격히 관리하세요. 이전 에이전트가 구축한 문서 뼈대를 파괴하지 마세요.
+3. 진행 로그(Progress Log) 작성: 매 작업일 기준으로 `Docs/ProgressLogs/` 폴더에 하루치 작업 내용을 몰아서 기록하세요 (예: `YYYY-MM-DD_ProgressLog.md`). 해당 파일에는 과거 코드(C++17)와의 차이점, 새로 추가된 C++20 문법/라이브러리, 디렉토리 구조 변경 내역을 적습니다. **특히 파일의 맨 아래(마지막 부분)에는 작업 마지막까지 지속적으로 갱신되는 [에러 발생 및 해결 과정(Troubleshooting)] 섹션을 두어, 그날 있었던 모든 라이브러리 참조, 환경 변수 설정, 디렉토리 경로 문제, C++ 문법 오류와 해결 과정을 누적 기록해야 합니다.**
+
+# Core Constraints
+- 웹(C# ASP.NET Core)과 인프라 작업 시 Redis 분산 락, MySQL 트랜잭션 동기화 규칙을 마스터 문서에 맞게 엄격히 적용하세요.
+- **[CRITICAL]** `Reference/` (또는 과거 프로젝트) 디렉토리 내의 파일들은 **절대 수정(Modify/Write)하지 마세요.** 오직 읽기(Read) 및 분석 용도로만 사용해야 합니다.
+- **[CRITICAL]** 패킷(Protobuf) 자동화 생성 시, 서버뿐만 아니라 향후 개발될 UE5 클라이언트 및 DummyClient도 `Shared/Scripts`에 위치한 파이프라인을 참조하여 동일한 `.proto` 명세와 생성된 코드를 공유할 수 있도록 경로와 배치 구조를 유지하세요.
+- **[CRITICAL]** 사용자가 "새로운 패킷 추가"를 지시한 경우, AI는 반드시 다음 과정을 거쳐야 합니다:
+  1. `Shared/Protobuf/Protocol.proto` 파일에 메시지를 정의합니다.
+  2. `Shared/Scripts/GenPackets.bat` 스크립트를 실행하여 패킷 핸들러 헤더(`.h`)와 **구현부(`.cpp`) 파일**을 자동 생성합니다.
+  3. 생성된 `ServerPacketHandler.cpp` (또는 `ClientPacketHandler.cpp`) 내부의 함수 뼈대(Signature 및 빈 구현부) 코드를 읽어와, 실제 `GameServer`의 핸들러 `cpp` 파일 하단에 복사/추가해 줌으로써, 프로그래머가 즉시 로직 편집을 시작할 수 있는 상태를 만들어야 합니다.
+- **[CRITICAL]** 추후 `Client` 폴더 내에 언리얼 엔진 5(UE5) 프로젝트 세팅(Milestone 4 등)을 시작할 경우, 대용량 에셋 파일(`.uasset`, `.umap` 등) 처리를 위해 반드시 **Git LFS (Large File Storage)** 세팅(`.gitattributes` 구성)을 가장 먼저 수행해야 합니다.
+
+# Educational Documentation
+- **[MANDATORY]** C++17에서 C++20으로 이식하거나 업그레이드하는 과정에서 도입되는 C++20 신규 기능(예: `std::span`, `std::jthread`, `std::atomic_ref` 등)은 반드시 `Docs/Cpp20_Migration_Guide.md` 파일에 요약/정리하여 사용자의 면접 및 학습 자료로 누적 기록해야 합니다.

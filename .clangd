@@ -1,0 +1,17 @@
+CompileFlags:
+  Add:
+    - "-xc++"
+    - "-std=c++20"
+    - "-I./Server/ServerCore"
+    - "-I./vcpkg/installed/x64-windows/include"
+
+Diagnostics:
+  # 미리 컴파일된 헤더(CorePch) 사용 시 발생하는 "Included header is not used directly" 경고를 무시합니다.
+  UnusedIncludes: None
+
+---
+If:
+  # 파이썬 Jinja 템플릿 폴더 내의 파일들에 대해서는 모든 에러 표시를 끕니다.
+  PathMatch: "Shared/Scripts/Templates/.*"
+Diagnostics:
+  Suppress: "*"
