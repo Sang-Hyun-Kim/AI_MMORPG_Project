@@ -46,3 +46,35 @@ using uint8 = unsigned __int8;
 using uint16 = unsigned __int16;
 using uint32 = unsigned __int32;
 using uint64 = unsigned __int64;
+
+#define size16(val)		static_cast<int16>(sizeof(val))
+#define size32(val)		static_cast<int32>(sizeof(val))
+#define len16(arr)		static_cast<int16>(sizeof(arr)/sizeof(arr[0]))
+#define len32(arr)		static_cast<int32>(sizeof(arr)/sizeof(arr[0]))
+
+#include <cassert>
+#define ASSERT_CRASH(expr)			\
+	do {							\
+		if (!(expr))				\
+		{							\
+			__debugbreak();			\
+			abort();				\
+		}							\
+	} while(0)
+
+USING_SHARED_PTR(IocpCore);
+USING_SHARED_PTR(IocpObject);
+USING_SHARED_PTR(Session);
+USING_SHARED_PTR(PacketSession);
+USING_SHARED_PTR(Listener);
+USING_SHARED_PTR(ServerService);
+USING_SHARED_PTR(ClientService);
+USING_SHARED_PTR(SendBuffer);
+USING_SHARED_PTR(Service);
+USING_SHARED_PTR(Job);
+USING_SHARED_PTR(JobQueue);
+
+#include "CoreTLS.h"
+#include "CoreGlobal.h"
+#include "GlobalQueue.h"
+#include "JobTimer.h"

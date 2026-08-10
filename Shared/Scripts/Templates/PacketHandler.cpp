@@ -1,3 +1,5 @@
+#include "{{output}}.h"
+
 {%- for pkt in parser.recv_pkt %}
 bool Handle_{{pkt.name}}(PacketSessionRef& session, Protocol::{{pkt.name}}& pkt)
 {

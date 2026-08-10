@@ -19,4 +19,5 @@ find_package(absl CONFIG REQUIRED)
 
 # 하위 디렉토리 추가
 add_subdirectory(ServerCore)
-# add_subdirectory(GameServer) # 차후 추가
+add_subdirectory(GameServer)
+add_subdirectory(DummyClient)

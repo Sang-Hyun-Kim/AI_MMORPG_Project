@@ -74,6 +74,8 @@ compile_commands.json
 Docs/ProgressLogs/
 Docs/AI_HANDOFF.md
 Docs/Cpp20_Migration_Guide.md
+Docs/Cpp20_Migration_Comparison.md
+Docs/Code_Specification.md
 
 # ============================================================================
 # Project Specific

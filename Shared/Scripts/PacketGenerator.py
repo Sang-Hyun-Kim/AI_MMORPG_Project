@@ -22,11 +22,7 @@ def main():
 	f.write(output)
 	f.close()
 
-	template_cpp = env.get_template('PacketHandler.cpp')
-	output_cpp = template_cpp.render(parser=parser, output=args.output)
-	f_cpp = open(args.output+'.cpp', 'w+')
-	f_cpp.write(output_cpp)
-	f_cpp.close()
+
 
 	print(output)
 	return

@@ -1,5 +1,8 @@
 #pragma once
 #include "Protocol.pb.h"
+#include "CorePch.h"
+#include "Session.h"
+#include "SendBuffer.h"
 #include <array>
 #include <span>
 #include <functional>

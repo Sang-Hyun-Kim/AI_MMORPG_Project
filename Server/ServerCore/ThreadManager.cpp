@@ -1,10 +1,7 @@
 #include "CorePch.h"
 #include "ThreadManager.h"
 
-// TODO: 나중에 CoreTLS.h를 만들어서 스레드 로컬 스토리지를 관리할 예정입니다.
-// #include "CoreTLS.h"
-
-ThreadManager GThreadManager;
+// CoreTLS.h는 CorePch.h에 포함되어 있으므로 바로 사용 가능
 
 ThreadManager::ThreadManager()
 {
@@ -52,10 +49,11 @@ void ThreadManager::Join()
 
 void ThreadManager::InitTLS()
 {
-	// TODO: LThreadId 등 스레드 로컬 고유 ID 발급 로직 추가
+	static std::atomic<uint32> SThreadId = 1;
+	LThreadId = SThreadId.fetch_add(1);
 }
 
 void ThreadManager::DestroyTLS()
 {
-	// TODO: 스레드 종료 시 메모리 풀, JobQueue 클리어 로직 등 추가
+	// 스레드 종료 시 명시적으로 정리할 데이터 처리
 }

@@ -28,5 +28,3 @@ private:
 	std::vector<std::jthread> _threads;
 };
 
-// 전역(Global) 스레드 매니저
-extern ThreadManager GThreadManager;

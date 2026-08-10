@@ -1,6 +1,26 @@
 # ServerCore 라이브러리 설정
 add_library(ServerCore STATIC
     CorePch.cpp
+    ThreadManager.cpp
+    JobQueue.cpp
+    SendBuffer.cpp
+    RecvBuffer.cpp
+    Session.cpp
+    IocpCore.cpp
+    IocpEvent.cpp
+    Listener.cpp
+    NetAddress.cpp
+    Service.cpp
+    SocketUtils.cpp
+    BufferReader.cpp
+    BufferWriter.cpp
+    CoreGlobal.cpp
+    CoreTLS.cpp
+    GlobalQueue.cpp
+    JobTimer.cpp
+    Enum.pb.cc
+    Struct.pb.cc
+    Protocol.pb.cc
 )
 
 # 인클루드 경로 설정 (현재 디렉토리)
