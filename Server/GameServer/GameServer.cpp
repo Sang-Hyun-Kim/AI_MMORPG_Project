@@ -6,30 +6,8 @@
 
 #include "ServerPacketHandler.h"
 
-class GameSession : public PacketSession
-{
-public:
-	virtual void OnConnected() override
-	{
-		std::wcout << L"GameSession Connected" << std::endl;
-	}
-
-	virtual void OnDisconnected() override
-	{
-		std::wcout << L"GameSession Disconnected" << std::endl;
-	}
-
-	virtual void OnRecvPacket(std::span<std::byte> buffer) override
-	{
-		PacketSessionRef session = GetPacketSessionRef();
-		ServerPacketHandler::HandlePacket(session, buffer);
-	}
-
-	virtual void OnSend(int32 len) override
-	{
-		// std::wcout << L"OnSend: " << len << L" bytes" << std::endl;
-	}
-};
+#include "GameSession.h"
+#include "GameRoomManager.h"
 
 int main()
 {
@@ -38,6 +16,7 @@ int main()
 
 	ServerPacketHandler::Init();
 	SocketUtils::Init();
+	GGameRoomManager->Init();
 
 	ServerServiceRef service = std::make_shared<ServerService>(
 		NetAddress(L"127.0.0.1", 7777),

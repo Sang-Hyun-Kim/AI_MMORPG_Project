@@ -26,8 +26,10 @@ void DoStressTest(PacketSessionRef session)
 				break;
 
 			Protocol::C_MOVE movePkt;
-			movePkt.mutable_info()->set_name("Dummy");
-			movePkt.mutable_info()->set_level(10);
+			movePkt.mutable_posinfo()->set_x(i * 100.0f);
+			movePkt.mutable_posinfo()->set_y(i * 100.0f);
+			movePkt.mutable_posinfo()->set_z(0.0f);
+			movePkt.mutable_posinfo()->set_yaw(0.0f);
 			
 			SendBufferRef sendBuffer = ClientPacketHandler::MakeSendBuffer(movePkt);
 			session->Send(sendBuffer);

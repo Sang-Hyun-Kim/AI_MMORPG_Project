@@ -39,22 +39,23 @@ message S_LEAVE_GAME
 
 message S_SPAWN
 {
-	repeated PlayerInfo players = 1;
+	repeated ObjectInfo objects = 1;
 }
 
 message S_DESPAWN
 {
-	repeated uint64 object_ids = 1;
+	repeated uint64 objectIds = 1;
 }
 
 message C_MOVE // 클라이언트->서버 이동패킷
 {
-	PlayerInfo info = 1;
+	PositionInfo posInfo = 1;
 }
 
 message S_MOVE
 {
-	PlayerInfo info = 1;
+	uint64 objectId = 1;
+	PositionInfo posInfo = 2;
 }
 
 message C_CHAT
@@ -64,6 +65,6 @@ message C_CHAT
 
 message S_CHAT
 {
-	uint64 playerId = 1;
+	uint64 objectId = 1;
 	string msg = 2;
 }

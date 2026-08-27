@@ -1,5 +1,7 @@
 #include "ServerPacketHandler.h"
 #include <iostream>
+#include "GameSession.h"
+#include "GameRoom.h"
 
 std::array<PacketHandlerFunc, UINT16_MAX> GPacketHandler;
 
@@ -9,7 +11,6 @@ bool Handle_INVALID(PacketSessionRef& session, std::span<std::byte> buffer)
 }
 bool Handle_C_LOGIN(PacketSessionRef& session, Protocol::C_LOGIN& pkt)
 {
-	// std::cout << "[GameServer] C_LOGIN Request Received!" << std::endl;
 	Protocol::S_LOGIN loginPkt;
 	loginPkt.set_success(true);
 	SendBufferRef sendBuffer = ServerPacketHandler::MakeSendBuffer(loginPkt);
@@ -26,11 +27,16 @@ bool Handle_C_LEAVE_GAME(PacketSessionRef& session, Protocol::C_LEAVE_GAME& pkt)
 }
 bool Handle_C_MOVE(PacketSessionRef& session, Protocol::C_MOVE& pkt)
 {
-	// std::cout << "[GameServer] C_MOVE Received - Name: " << pkt.info().name() << ", Level: " << pkt.info().level() << std::endl;
-	Protocol::S_MOVE movePkt;
-	movePkt.mutable_info()->CopyFrom(pkt.info());
-	SendBufferRef sendBuffer = ServerPacketHandler::MakeSendBuffer(movePkt);
-	session->Send(sendBuffer);
+	GameSessionRef gameSession = std::static_pointer_cast<GameSession>(session);
+	PlayerRef player = gameSession->GetPlayer();
+	if (player == nullptr)
+		return false;
+
+	GameRoomRef room = player->GetRoom();
+	if (room == nullptr)
+		return false;
+
+	room->DoAsync(&GameRoom::HandleMove, player, pkt);
 	return true;
 }
 bool Handle_C_CHAT(PacketSessionRef& session, Protocol::C_CHAT& pkt)

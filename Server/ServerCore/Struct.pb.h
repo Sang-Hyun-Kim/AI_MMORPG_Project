@@ -53,10 +53,18 @@ extern "C" {
 extern const ::google::protobuf::internal::DescriptorTable descriptor_table_Struct_2eproto;
 }  // extern "C"
 namespace Protocol {
+class ObjectInfo;
+struct ObjectInfoDefaultTypeInternal;
+extern ObjectInfoDefaultTypeInternal _ObjectInfo_default_instance_;
+extern const ::google::protobuf::internal::ClassDataFull ObjectInfo_class_data_;
 class PlayerInfo;
 struct PlayerInfoDefaultTypeInternal;
 extern PlayerInfoDefaultTypeInternal _PlayerInfo_default_instance_;
 extern const ::google::protobuf::internal::ClassDataFull PlayerInfo_class_data_;
+class PositionInfo;
+struct PositionInfoDefaultTypeInternal;
+extern PositionInfoDefaultTypeInternal _PositionInfo_default_instance_;
+extern const ::google::protobuf::internal::ClassDataFull PositionInfo_class_data_;
 }  // namespace Protocol
 namespace google {
 namespace protobuf {
@@ -68,6 +76,456 @@ namespace Protocol {
 // ===================================================================
 
 
+// -------------------------------------------------------------------
+
+class PositionInfo final : public ::google::protobuf::Message
+/* @@protoc_insertion_point(class_definition:Protocol.PositionInfo) */ {
+ public:
+  inline PositionInfo() : PositionInfo(nullptr) {}
+  ~PositionInfo() PROTOBUF_FINAL;
+
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+  void operator delete(PositionInfo* PROTOBUF_NONNULL msg, ::std::destroying_delete_t) {
+    SharedDtor(*msg);
+    ::google::protobuf::internal::SizedDelete(msg, sizeof(PositionInfo));
+  }
+#endif
+
+  template <typename = void>
+  explicit PROTOBUF_CONSTEXPR PositionInfo(::google::protobuf::internal::ConstantInitialized);
+
+  inline PositionInfo(const PositionInfo& from) : PositionInfo(nullptr, from) {}
+  inline PositionInfo(PositionInfo&& from) noexcept
+      : PositionInfo(nullptr, ::std::move(from)) {}
+  inline PositionInfo& operator=(const PositionInfo& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline PositionInfo& operator=(PositionInfo&& from) noexcept {
+    if (this == &from) return *this;
+    if (::google::protobuf::internal::CanMoveWithInternalSwap(GetArena(), from.GetArena())) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return _internal_metadata_.unknown_fields<::google::protobuf::UnknownFieldSet>(::google::protobuf::UnknownFieldSet::default_instance);
+  }
+  inline ::google::protobuf::UnknownFieldSet* PROTOBUF_NONNULL mutable_unknown_fields()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return _internal_metadata_.mutable_unknown_fields<::google::protobuf::UnknownFieldSet>();
+  }
+
+  static const ::google::protobuf::Descriptor* PROTOBUF_NONNULL descriptor() {
+    return GetDescriptor();
+  }
+  static const ::google::protobuf::Descriptor* PROTOBUF_NONNULL GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::google::protobuf::Reflection* PROTOBUF_NONNULL GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const PositionInfo& default_instance() {
+    return *reinterpret_cast<const PositionInfo*>(
+        &_PositionInfo_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages = 0;
+  friend void swap(PositionInfo& a, PositionInfo& b) { a.Swap(&b); }
+  inline void Swap(PositionInfo* PROTOBUF_NONNULL other) {
+    if (other == this) return;
+    if (::google::protobuf::internal::CanUseInternalSwap(GetArena(), other->GetArena())) {
+      InternalSwap(other);
+    } else {
+      ::google::protobuf::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(PositionInfo* PROTOBUF_NONNULL other) {
+    if (other == this) return;
+    ABSL_DCHECK(GetArena() == other->GetArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  PositionInfo* PROTOBUF_NONNULL New(::google::protobuf::Arena* PROTOBUF_NULLABLE arena = nullptr) const {
+    return ::google::protobuf::Message::DefaultConstruct<PositionInfo>(arena);
+  }
+  using ::google::protobuf::Message::CopyFrom;
+  void CopyFrom(const PositionInfo& from);
+  using ::google::protobuf::Message::MergeFrom;
+  void MergeFrom(const PositionInfo& from) { PositionInfo::MergeImpl(*this, from); }
+
+  private:
+  static void MergeImpl(::google::protobuf::MessageLite& to_msg,
+                        const ::google::protobuf::MessageLite& from_msg);
+
+  public:
+  bool IsInitialized() const {
+    return true;
+  }
+  ABSL_ATTRIBUTE_REINITIALIZES void Clear() PROTOBUF_FINAL;
+  #if defined(PROTOBUF_CUSTOM_VTABLE)
+  private:
+  static ::size_t ByteSizeLong(const ::google::protobuf::MessageLite& msg);
+  static ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      const ::google::protobuf::MessageLite& msg, ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream);
+
+  public:
+  ::size_t ByteSizeLong() const { return ByteSizeLong(*this); }
+  ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const {
+    return _InternalSerialize(*this, target, stream);
+  }
+  #else   // PROTOBUF_CUSTOM_VTABLE
+  ::size_t ByteSizeLong() const final;
+  ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const final;
+  #endif  // PROTOBUF_CUSTOM_VTABLE
+  int GetCachedSize() const { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  static void SharedDtor(MessageLite& self);
+  void InternalSwap(PositionInfo* PROTOBUF_NONNULL other);
+ private:
+  template <typename T>
+  friend ::absl::string_view(::google::protobuf::internal::GetAnyMessageName)();
+  static ::absl::string_view FullMessageName() { return "Protocol.PositionInfo"; }
+
+  explicit PositionInfo(::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  PositionInfo(::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const PositionInfo& from);
+  PositionInfo(
+      ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, PositionInfo&& from) noexcept
+      : PositionInfo(arena) {
+    *this = ::std::move(from);
+  }
+  const ::google::protobuf::internal::ClassData* PROTOBUF_NONNULL GetClassData() const PROTOBUF_FINAL;
+  static void* PROTOBUF_NONNULL PlacementNew_(
+      const void* PROTOBUF_NONNULL, void* PROTOBUF_NONNULL mem,
+      ::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  static constexpr auto InternalNewImpl_();
+
+ public:
+  static constexpr auto InternalGenerateClassData_();
+
+  ::google::protobuf::Metadata GetMetadata() const;
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+  enum : int {
+    kXFieldNumber = 1,
+    kYFieldNumber = 2,
+    kZFieldNumber = 3,
+    kYawFieldNumber = 4,
+  };
+  // float x = 1;
+  void clear_x() ;
+  float x() const;
+  void set_x(float value);
+
+  private:
+  float _internal_x() const;
+  void _internal_set_x(float value);
+
+  public:
+  // float y = 2;
+  void clear_y() ;
+  float y() const;
+  void set_y(float value);
+
+  private:
+  float _internal_y() const;
+  void _internal_set_y(float value);
+
+  public:
+  // float z = 3;
+  void clear_z() ;
+  float z() const;
+  void set_z(float value);
+
+  private:
+  float _internal_z() const;
+  void _internal_set_z(float value);
+
+  public:
+  // float yaw = 4;
+  void clear_yaw() ;
+  float yaw() const;
+  void set_yaw(float value);
+
+  private:
+  float _internal_yaw() const;
+  void _internal_set_yaw(float value);
+
+  public:
+  // @@protoc_insertion_point(class_scope:Protocol.PositionInfo)
+ private:
+  class _Internal;
+  friend class ::google::protobuf::internal::TcParser;
+  static const ::google::protobuf::internal::TcParseTable<2, 4,
+                                   0, 0,
+                                   2>
+      _table_;
+
+  friend class ::google::protobuf::MessageLite;
+  friend class ::google::protobuf::Arena;
+  template <typename T>
+  friend class ::google::protobuf::Arena::InternalHelper;
+  using InternalArenaConstructable_ = void;
+  using DestructorSkippable_ = void;
+  struct Impl_ {
+    inline explicit constexpr Impl_(::google::protobuf::internal::ConstantInitialized) noexcept;
+    inline explicit Impl_(
+        ::google::protobuf::internal::InternalVisibility visibility,
+        ::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+    inline explicit Impl_(
+        ::google::protobuf::internal::InternalVisibility visibility,
+        ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const Impl_& from,
+        const PositionInfo& from_msg);
+    ::google::protobuf::internal::HasBits<1> _has_bits_;
+    ::google::protobuf::internal::CachedSize _cached_size_;
+    float x_;
+    float y_;
+    float z_;
+    float yaw_;
+    PROTOBUF_TSAN_DECLARE_MEMBER
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_Struct_2eproto;
+};
+
+extern const ::google::protobuf::internal::ClassDataFull PositionInfo_class_data_;
+// -------------------------------------------------------------------
+
+class ObjectInfo final : public ::google::protobuf::Message
+/* @@protoc_insertion_point(class_definition:Protocol.ObjectInfo) */ {
+ public:
+  inline ObjectInfo() : ObjectInfo(nullptr) {}
+  ~ObjectInfo() PROTOBUF_FINAL;
+
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+  void operator delete(ObjectInfo* PROTOBUF_NONNULL msg, ::std::destroying_delete_t) {
+    SharedDtor(*msg);
+    ::google::protobuf::internal::SizedDelete(msg, sizeof(ObjectInfo));
+  }
+#endif
+
+  template <typename = void>
+  explicit PROTOBUF_CONSTEXPR ObjectInfo(::google::protobuf::internal::ConstantInitialized);
+
+  inline ObjectInfo(const ObjectInfo& from) : ObjectInfo(nullptr, from) {}
+  inline ObjectInfo(ObjectInfo&& from) noexcept
+      : ObjectInfo(nullptr, ::std::move(from)) {}
+  inline ObjectInfo& operator=(const ObjectInfo& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline ObjectInfo& operator=(ObjectInfo&& from) noexcept {
+    if (this == &from) return *this;
+    if (::google::protobuf::internal::CanMoveWithInternalSwap(GetArena(), from.GetArena())) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return _internal_metadata_.unknown_fields<::google::protobuf::UnknownFieldSet>(::google::protobuf::UnknownFieldSet::default_instance);
+  }
+  inline ::google::protobuf::UnknownFieldSet* PROTOBUF_NONNULL mutable_unknown_fields()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return _internal_metadata_.mutable_unknown_fields<::google::protobuf::UnknownFieldSet>();
+  }
+
+  static const ::google::protobuf::Descriptor* PROTOBUF_NONNULL descriptor() {
+    return GetDescriptor();
+  }
+  static const ::google::protobuf::Descriptor* PROTOBUF_NONNULL GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::google::protobuf::Reflection* PROTOBUF_NONNULL GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const ObjectInfo& default_instance() {
+    return *reinterpret_cast<const ObjectInfo*>(
+        &_ObjectInfo_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages = 1;
+  friend void swap(ObjectInfo& a, ObjectInfo& b) { a.Swap(&b); }
+  inline void Swap(ObjectInfo* PROTOBUF_NONNULL other) {
+    if (other == this) return;
+    if (::google::protobuf::internal::CanUseInternalSwap(GetArena(), other->GetArena())) {
+      InternalSwap(other);
+    } else {
+      ::google::protobuf::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(ObjectInfo* PROTOBUF_NONNULL other) {
+    if (other == this) return;
+    ABSL_DCHECK(GetArena() == other->GetArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  ObjectInfo* PROTOBUF_NONNULL New(::google::protobuf::Arena* PROTOBUF_NULLABLE arena = nullptr) const {
+    return ::google::protobuf::Message::DefaultConstruct<ObjectInfo>(arena);
+  }
+  using ::google::protobuf::Message::CopyFrom;
+  void CopyFrom(const ObjectInfo& from);
+  using ::google::protobuf::Message::MergeFrom;
+  void MergeFrom(const ObjectInfo& from) { ObjectInfo::MergeImpl(*this, from); }
+
+  private:
+  static void MergeImpl(::google::protobuf::MessageLite& to_msg,
+                        const ::google::protobuf::MessageLite& from_msg);
+
+  public:
+  bool IsInitialized() const {
+    return true;
+  }
+  ABSL_ATTRIBUTE_REINITIALIZES void Clear() PROTOBUF_FINAL;
+  #if defined(PROTOBUF_CUSTOM_VTABLE)
+  private:
+  static ::size_t ByteSizeLong(const ::google::protobuf::MessageLite& msg);
+  static ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      const ::google::protobuf::MessageLite& msg, ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream);
+
+  public:
+  ::size_t ByteSizeLong() const { return ByteSizeLong(*this); }
+  ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const {
+    return _InternalSerialize(*this, target, stream);
+  }
+  #else   // PROTOBUF_CUSTOM_VTABLE
+  ::size_t ByteSizeLong() const final;
+  ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const final;
+  #endif  // PROTOBUF_CUSTOM_VTABLE
+  int GetCachedSize() const { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  static void SharedDtor(MessageLite& self);
+  void InternalSwap(ObjectInfo* PROTOBUF_NONNULL other);
+ private:
+  template <typename T>
+  friend ::absl::string_view(::google::protobuf::internal::GetAnyMessageName)();
+  static ::absl::string_view FullMessageName() { return "Protocol.ObjectInfo"; }
+
+  explicit ObjectInfo(::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  ObjectInfo(::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const ObjectInfo& from);
+  ObjectInfo(
+      ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, ObjectInfo&& from) noexcept
+      : ObjectInfo(arena) {
+    *this = ::std::move(from);
+  }
+  const ::google::protobuf::internal::ClassData* PROTOBUF_NONNULL GetClassData() const PROTOBUF_FINAL;
+  static void* PROTOBUF_NONNULL PlacementNew_(
+      const void* PROTOBUF_NONNULL, void* PROTOBUF_NONNULL mem,
+      ::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  static constexpr auto InternalNewImpl_();
+
+ public:
+  static constexpr auto InternalGenerateClassData_();
+
+  ::google::protobuf::Metadata GetMetadata() const;
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+  enum : int {
+    kNameFieldNumber = 2,
+    kPosInfoFieldNumber = 3,
+    kObjectIdFieldNumber = 1,
+  };
+  // string name = 2;
+  void clear_name() ;
+  const ::std::string& name() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_name(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_name();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_name();
+  void set_allocated_name(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_name() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_name(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_name();
+
+  public:
+  // .Protocol.PositionInfo posInfo = 3;
+  bool has_posinfo() const;
+  void clear_posinfo() ;
+  const ::Protocol::PositionInfo& posinfo() const;
+  [[nodiscard]] ::Protocol::PositionInfo* PROTOBUF_NULLABLE release_posinfo();
+  ::Protocol::PositionInfo* PROTOBUF_NONNULL mutable_posinfo();
+  void set_allocated_posinfo(::Protocol::PositionInfo* PROTOBUF_NULLABLE value);
+  void unsafe_arena_set_allocated_posinfo(::Protocol::PositionInfo* PROTOBUF_NULLABLE value);
+  ::Protocol::PositionInfo* PROTOBUF_NULLABLE unsafe_arena_release_posinfo();
+
+  private:
+  const ::Protocol::PositionInfo& _internal_posinfo() const;
+  ::Protocol::PositionInfo* PROTOBUF_NONNULL _internal_mutable_posinfo();
+
+  public:
+  // uint64 objectId = 1;
+  void clear_objectid() ;
+  ::uint64_t objectid() const;
+  void set_objectid(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_objectid() const;
+  void _internal_set_objectid(::uint64_t value);
+
+  public:
+  // @@protoc_insertion_point(class_scope:Protocol.ObjectInfo)
+ private:
+  class _Internal;
+  friend class ::google::protobuf::internal::TcParser;
+  static const ::google::protobuf::internal::TcParseTable<2, 3,
+                                   1, 32,
+                                   2>
+      _table_;
+
+  friend class ::google::protobuf::MessageLite;
+  friend class ::google::protobuf::Arena;
+  template <typename T>
+  friend class ::google::protobuf::Arena::InternalHelper;
+  using InternalArenaConstructable_ = void;
+  using DestructorSkippable_ = void;
+  struct Impl_ {
+    inline explicit constexpr Impl_(::google::protobuf::internal::ConstantInitialized) noexcept;
+    inline explicit Impl_(
+        ::google::protobuf::internal::InternalVisibility visibility,
+        ::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+    inline explicit Impl_(
+        ::google::protobuf::internal::InternalVisibility visibility,
+        ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const Impl_& from,
+        const ObjectInfo& from_msg);
+    ::google::protobuf::internal::HasBits<1> _has_bits_;
+    ::google::protobuf::internal::CachedSize _cached_size_;
+    ::google::protobuf::internal::ArenaStringPtr name_;
+    ::Protocol::PositionInfo* PROTOBUF_NULLABLE posinfo_;
+    ::uint64_t objectid_;
+    PROTOBUF_TSAN_DECLARE_MEMBER
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_Struct_2eproto;
+};
+
+extern const ::google::protobuf::internal::ClassDataFull ObjectInfo_class_data_;
 // -------------------------------------------------------------------
 
 class PlayerInfo final : public ::google::protobuf::Message
@@ -125,7 +583,7 @@ class PlayerInfo final : public ::google::protobuf::Message
     return *reinterpret_cast<const PlayerInfo*>(
         &_PlayerInfo_default_instance_);
   }
-  static constexpr int kIndexInFileMessages = 0;
+  static constexpr int kIndexInFileMessages = 2;
   friend void swap(PlayerInfo& a, PlayerInfo& b) { a.Swap(&b); }
   inline void Swap(PlayerInfo* PROTOBUF_NONNULL other) {
     if (other == this) return;
@@ -212,36 +670,25 @@ class PlayerInfo final : public ::google::protobuf::Message
 
   // accessors -------------------------------------------------------
   enum : int {
-    kNameFieldNumber = 2,
-    kIdFieldNumber = 1,
-    kLevelFieldNumber = 3,
+    kObjectInfoFieldNumber = 1,
+    kLevelFieldNumber = 2,
   };
-  // string name = 2;
-  void clear_name() ;
-  const ::std::string& name() const;
-  template <typename Arg_ = const ::std::string&, typename... Args_>
-  void set_name(Arg_&& arg, Args_... args);
-  ::std::string* PROTOBUF_NONNULL mutable_name();
-  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_name();
-  void set_allocated_name(::std::string* PROTOBUF_NULLABLE value);
+  // .Protocol.ObjectInfo objectInfo = 1;
+  bool has_objectinfo() const;
+  void clear_objectinfo() ;
+  const ::Protocol::ObjectInfo& objectinfo() const;
+  [[nodiscard]] ::Protocol::ObjectInfo* PROTOBUF_NULLABLE release_objectinfo();
+  ::Protocol::ObjectInfo* PROTOBUF_NONNULL mutable_objectinfo();
+  void set_allocated_objectinfo(::Protocol::ObjectInfo* PROTOBUF_NULLABLE value);
+  void unsafe_arena_set_allocated_objectinfo(::Protocol::ObjectInfo* PROTOBUF_NULLABLE value);
+  ::Protocol::ObjectInfo* PROTOBUF_NULLABLE unsafe_arena_release_objectinfo();
 
   private:
-  const ::std::string& _internal_name() const;
-  PROTOBUF_ALWAYS_INLINE void _internal_set_name(const ::std::string& value);
-  ::std::string* PROTOBUF_NONNULL _internal_mutable_name();
+  const ::Protocol::ObjectInfo& _internal_objectinfo() const;
+  ::Protocol::ObjectInfo* PROTOBUF_NONNULL _internal_mutable_objectinfo();
 
   public:
-  // uint64 id = 1;
-  void clear_id() ;
-  ::uint64_t id() const;
-  void set_id(::uint64_t value);
-
-  private:
-  ::uint64_t _internal_id() const;
-  void _internal_set_id(::uint64_t value);
-
-  public:
-  // int32 level = 3;
+  // int32 level = 2;
   void clear_level() ;
   ::int32_t level() const;
   void set_level(::int32_t value);
@@ -255,8 +702,8 @@ class PlayerInfo final : public ::google::protobuf::Message
  private:
   class _Internal;
   friend class ::google::protobuf::internal::TcParser;
-  static const ::google::protobuf::internal::TcParseTable<2, 3,
-                                   0, 32,
+  static const ::google::protobuf::internal::TcParseTable<1, 2,
+                                   1, 0,
                                    2>
       _table_;
 
@@ -277,8 +724,7 @@ class PlayerInfo final : public ::google::protobuf::Message
         const PlayerInfo& from_msg);
     ::google::protobuf::internal::HasBits<1> _has_bits_;
     ::google::protobuf::internal::CachedSize _cached_size_;
-    ::google::protobuf::internal::ArenaStringPtr name_;
-    ::uint64_t id_;
+    ::Protocol::ObjectInfo* PROTOBUF_NULLABLE objectinfo_;
     ::int32_t level_;
     PROTOBUF_TSAN_DECLARE_MEMBER
   };
@@ -302,74 +748,178 @@ extern const ::google::protobuf::internal::ClassDataFull PlayerInfo_class_data_;
 #endif  // __GNUC__
 // -------------------------------------------------------------------
 
-// PlayerInfo
+// PositionInfo
 
-// uint64 id = 1;
-inline void PlayerInfo::clear_id() {
+// float x = 1;
+inline void PositionInfo::clear_x() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
-  _impl_.id_ = ::uint64_t{0u};
+  _impl_.x_ = 0;
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000001U);
+}
+inline float PositionInfo::x() const {
+  // @@protoc_insertion_point(field_get:Protocol.PositionInfo.x)
+  return _internal_x();
+}
+inline void PositionInfo::set_x(float value) {
+  _internal_set_x(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  // @@protoc_insertion_point(field_set:Protocol.PositionInfo.x)
+}
+inline float PositionInfo::_internal_x() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.x_;
+}
+inline void PositionInfo::_internal_set_x(float value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.x_ = value;
+}
+
+// float y = 2;
+inline void PositionInfo::clear_y() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.y_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
                   0x00000002U);
 }
-inline ::uint64_t PlayerInfo::id() const {
-  // @@protoc_insertion_point(field_get:Protocol.PlayerInfo.id)
-  return _internal_id();
+inline float PositionInfo::y() const {
+  // @@protoc_insertion_point(field_get:Protocol.PositionInfo.y)
+  return _internal_y();
 }
-inline void PlayerInfo::set_id(::uint64_t value) {
-  _internal_set_id(value);
+inline void PositionInfo::set_y(float value) {
+  _internal_set_y(value);
   SetHasBit(_impl_._has_bits_[0], 0x00000002U);
-  // @@protoc_insertion_point(field_set:Protocol.PlayerInfo.id)
+  // @@protoc_insertion_point(field_set:Protocol.PositionInfo.y)
 }
-inline ::uint64_t PlayerInfo::_internal_id() const {
+inline float PositionInfo::_internal_y() const {
   ::google::protobuf::internal::TSanRead(&_impl_);
-  return _impl_.id_;
+  return _impl_.y_;
 }
-inline void PlayerInfo::_internal_set_id(::uint64_t value) {
+inline void PositionInfo::_internal_set_y(float value) {
   ::google::protobuf::internal::TSanWrite(&_impl_);
-  _impl_.id_ = value;
+  _impl_.y_ = value;
+}
+
+// float z = 3;
+inline void PositionInfo::clear_z() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.z_ = 0;
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000004U);
+}
+inline float PositionInfo::z() const {
+  // @@protoc_insertion_point(field_get:Protocol.PositionInfo.z)
+  return _internal_z();
+}
+inline void PositionInfo::set_z(float value) {
+  _internal_set_z(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  // @@protoc_insertion_point(field_set:Protocol.PositionInfo.z)
+}
+inline float PositionInfo::_internal_z() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.z_;
+}
+inline void PositionInfo::_internal_set_z(float value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.z_ = value;
+}
+
+// float yaw = 4;
+inline void PositionInfo::clear_yaw() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.yaw_ = 0;
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000008U);
+}
+inline float PositionInfo::yaw() const {
+  // @@protoc_insertion_point(field_get:Protocol.PositionInfo.yaw)
+  return _internal_yaw();
+}
+inline void PositionInfo::set_yaw(float value) {
+  _internal_set_yaw(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  // @@protoc_insertion_point(field_set:Protocol.PositionInfo.yaw)
+}
+inline float PositionInfo::_internal_yaw() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.yaw_;
+}
+inline void PositionInfo::_internal_set_yaw(float value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.yaw_ = value;
+}
+
+// -------------------------------------------------------------------
+
+// ObjectInfo
+
+// uint64 objectId = 1;
+inline void ObjectInfo::clear_objectid() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.objectid_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000004U);
+}
+inline ::uint64_t ObjectInfo::objectid() const {
+  // @@protoc_insertion_point(field_get:Protocol.ObjectInfo.objectId)
+  return _internal_objectid();
+}
+inline void ObjectInfo::set_objectid(::uint64_t value) {
+  _internal_set_objectid(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  // @@protoc_insertion_point(field_set:Protocol.ObjectInfo.objectId)
+}
+inline ::uint64_t ObjectInfo::_internal_objectid() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.objectid_;
+}
+inline void ObjectInfo::_internal_set_objectid(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.objectid_ = value;
 }
 
 // string name = 2;
-inline void PlayerInfo::clear_name() {
+inline void ObjectInfo::clear_name() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.name_.ClearToEmpty();
   ClearHasBit(_impl_._has_bits_[0],
                   0x00000001U);
 }
-inline const ::std::string& PlayerInfo::name() const
+inline const ::std::string& ObjectInfo::name() const
     ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  // @@protoc_insertion_point(field_get:Protocol.PlayerInfo.name)
+  // @@protoc_insertion_point(field_get:Protocol.ObjectInfo.name)
   return _internal_name();
 }
 template <typename Arg_, typename... Args_>
-PROTOBUF_ALWAYS_INLINE void PlayerInfo::set_name(Arg_&& arg, Args_... args) {
+PROTOBUF_ALWAYS_INLINE void ObjectInfo::set_name(Arg_&& arg, Args_... args) {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   SetHasBit(_impl_._has_bits_[0], 0x00000001U);
   _impl_.name_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
-  // @@protoc_insertion_point(field_set:Protocol.PlayerInfo.name)
+  // @@protoc_insertion_point(field_set:Protocol.ObjectInfo.name)
 }
-inline ::std::string* PROTOBUF_NONNULL PlayerInfo::mutable_name()
+inline ::std::string* PROTOBUF_NONNULL ObjectInfo::mutable_name()
     ABSL_ATTRIBUTE_LIFETIME_BOUND {
   SetHasBit(_impl_._has_bits_[0], 0x00000001U);
   ::std::string* _s = _internal_mutable_name();
-  // @@protoc_insertion_point(field_mutable:Protocol.PlayerInfo.name)
+  // @@protoc_insertion_point(field_mutable:Protocol.ObjectInfo.name)
   return _s;
 }
-inline const ::std::string& PlayerInfo::_internal_name() const {
+inline const ::std::string& ObjectInfo::_internal_name() const {
   ::google::protobuf::internal::TSanRead(&_impl_);
   return _impl_.name_.Get();
 }
-inline void PlayerInfo::_internal_set_name(const ::std::string& value) {
+inline void ObjectInfo::_internal_set_name(const ::std::string& value) {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.name_.Set(value, GetArena());
 }
-inline ::std::string* PROTOBUF_NONNULL PlayerInfo::_internal_mutable_name() {
+inline ::std::string* PROTOBUF_NONNULL ObjectInfo::_internal_mutable_name() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   return _impl_.name_.Mutable( GetArena());
 }
-inline ::std::string* PROTOBUF_NULLABLE PlayerInfo::release_name() {
+inline ::std::string* PROTOBUF_NULLABLE ObjectInfo::release_name() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
-  // @@protoc_insertion_point(field_release:Protocol.PlayerInfo.name)
+  // @@protoc_insertion_point(field_release:Protocol.ObjectInfo.name)
   if (!CheckHasBit(_impl_._has_bits_[0], 0x00000001U)) {
     return nullptr;
   }
@@ -380,7 +930,7 @@ inline ::std::string* PROTOBUF_NULLABLE PlayerInfo::release_name() {
   }
   return released;
 }
-inline void PlayerInfo::set_allocated_name(::std::string* PROTOBUF_NULLABLE value) {
+inline void ObjectInfo::set_allocated_name(::std::string* PROTOBUF_NULLABLE value) {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   if (value != nullptr) {
     SetHasBit(_impl_._has_bits_[0], 0x00000001U);
@@ -391,15 +941,217 @@ inline void PlayerInfo::set_allocated_name(::std::string* PROTOBUF_NULLABLE valu
   if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.name_.IsDefault()) {
     _impl_.name_.Set("", GetArena());
   }
-  // @@protoc_insertion_point(field_set_allocated:Protocol.PlayerInfo.name)
+  // @@protoc_insertion_point(field_set_allocated:Protocol.ObjectInfo.name)
 }
 
-// int32 level = 3;
+// .Protocol.PositionInfo posInfo = 3;
+inline bool ObjectInfo::has_posinfo() const {
+  bool value = CheckHasBit(_impl_._has_bits_[0], 0x00000002U);
+  PROTOBUF_ASSUME(!value || _impl_.posinfo_ != nullptr);
+  return value;
+}
+inline void ObjectInfo::clear_posinfo() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (_impl_.posinfo_ != nullptr) _impl_.posinfo_->Clear();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000002U);
+}
+inline const ::Protocol::PositionInfo& ObjectInfo::_internal_posinfo() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  const ::Protocol::PositionInfo* p = _impl_.posinfo_;
+  return p != nullptr ? *p : reinterpret_cast<const ::Protocol::PositionInfo&>(::Protocol::_PositionInfo_default_instance_);
+}
+inline const ::Protocol::PositionInfo& ObjectInfo::posinfo() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:Protocol.ObjectInfo.posInfo)
+  return _internal_posinfo();
+}
+inline void ObjectInfo::unsafe_arena_set_allocated_posinfo(
+    ::Protocol::PositionInfo* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (GetArena() == nullptr) {
+    delete reinterpret_cast<::google::protobuf::MessageLite*>(_impl_.posinfo_);
+  }
+  _impl_.posinfo_ = reinterpret_cast<::Protocol::PositionInfo*>(value);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000002U);
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:Protocol.ObjectInfo.posInfo)
+}
+inline ::Protocol::PositionInfo* PROTOBUF_NULLABLE ObjectInfo::release_posinfo() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+
+  ClearHasBit(_impl_._has_bits_[0], 0x00000002U);
+  ::Protocol::PositionInfo* released = _impl_.posinfo_;
+  _impl_.posinfo_ = nullptr;
+  if (::google::protobuf::internal::DebugHardenForceCopyInRelease()) {
+    auto* old = reinterpret_cast<::google::protobuf::MessageLite*>(released);
+    released = ::google::protobuf::internal::DuplicateIfNonNull(released);
+    if (GetArena() == nullptr) {
+      delete old;
+    }
+  } else {
+    if (GetArena() != nullptr) {
+      released = ::google::protobuf::internal::DuplicateIfNonNull(released);
+    }
+  }
+  return released;
+}
+inline ::Protocol::PositionInfo* PROTOBUF_NULLABLE ObjectInfo::unsafe_arena_release_posinfo() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:Protocol.ObjectInfo.posInfo)
+
+  ClearHasBit(_impl_._has_bits_[0], 0x00000002U);
+  ::Protocol::PositionInfo* temp = _impl_.posinfo_;
+  _impl_.posinfo_ = nullptr;
+  return temp;
+}
+inline ::Protocol::PositionInfo* PROTOBUF_NONNULL ObjectInfo::_internal_mutable_posinfo() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (_impl_.posinfo_ == nullptr) {
+    auto* p = ::google::protobuf::Message::DefaultConstruct<::Protocol::PositionInfo>(GetArena());
+    _impl_.posinfo_ = reinterpret_cast<::Protocol::PositionInfo*>(p);
+  }
+  return _impl_.posinfo_;
+}
+inline ::Protocol::PositionInfo* PROTOBUF_NONNULL ObjectInfo::mutable_posinfo()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  ::Protocol::PositionInfo* _msg = _internal_mutable_posinfo();
+  // @@protoc_insertion_point(field_mutable:Protocol.ObjectInfo.posInfo)
+  return _msg;
+}
+inline void ObjectInfo::set_allocated_posinfo(::Protocol::PositionInfo* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::Arena* message_arena = GetArena();
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (message_arena == nullptr) {
+    delete reinterpret_cast<::google::protobuf::MessageLite*>(_impl_.posinfo_);
+  }
+
+  if (value != nullptr) {
+    ::google::protobuf::Arena* submessage_arena = value->GetArena();
+    if (message_arena != submessage_arena) {
+      value = ::google::protobuf::internal::GetOwnedMessage(message_arena, value, submessage_arena);
+    }
+    SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000002U);
+  }
+
+  _impl_.posinfo_ = reinterpret_cast<::Protocol::PositionInfo*>(value);
+  // @@protoc_insertion_point(field_set_allocated:Protocol.ObjectInfo.posInfo)
+}
+
+// -------------------------------------------------------------------
+
+// PlayerInfo
+
+// .Protocol.ObjectInfo objectInfo = 1;
+inline bool PlayerInfo::has_objectinfo() const {
+  bool value = CheckHasBit(_impl_._has_bits_[0], 0x00000001U);
+  PROTOBUF_ASSUME(!value || _impl_.objectinfo_ != nullptr);
+  return value;
+}
+inline void PlayerInfo::clear_objectinfo() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (_impl_.objectinfo_ != nullptr) _impl_.objectinfo_->Clear();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000001U);
+}
+inline const ::Protocol::ObjectInfo& PlayerInfo::_internal_objectinfo() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  const ::Protocol::ObjectInfo* p = _impl_.objectinfo_;
+  return p != nullptr ? *p : reinterpret_cast<const ::Protocol::ObjectInfo&>(::Protocol::_ObjectInfo_default_instance_);
+}
+inline const ::Protocol::ObjectInfo& PlayerInfo::objectinfo() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:Protocol.PlayerInfo.objectInfo)
+  return _internal_objectinfo();
+}
+inline void PlayerInfo::unsafe_arena_set_allocated_objectinfo(
+    ::Protocol::ObjectInfo* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (GetArena() == nullptr) {
+    delete reinterpret_cast<::google::protobuf::MessageLite*>(_impl_.objectinfo_);
+  }
+  _impl_.objectinfo_ = reinterpret_cast<::Protocol::ObjectInfo*>(value);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000001U);
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:Protocol.PlayerInfo.objectInfo)
+}
+inline ::Protocol::ObjectInfo* PROTOBUF_NULLABLE PlayerInfo::release_objectinfo() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+
+  ClearHasBit(_impl_._has_bits_[0], 0x00000001U);
+  ::Protocol::ObjectInfo* released = _impl_.objectinfo_;
+  _impl_.objectinfo_ = nullptr;
+  if (::google::protobuf::internal::DebugHardenForceCopyInRelease()) {
+    auto* old = reinterpret_cast<::google::protobuf::MessageLite*>(released);
+    released = ::google::protobuf::internal::DuplicateIfNonNull(released);
+    if (GetArena() == nullptr) {
+      delete old;
+    }
+  } else {
+    if (GetArena() != nullptr) {
+      released = ::google::protobuf::internal::DuplicateIfNonNull(released);
+    }
+  }
+  return released;
+}
+inline ::Protocol::ObjectInfo* PROTOBUF_NULLABLE PlayerInfo::unsafe_arena_release_objectinfo() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:Protocol.PlayerInfo.objectInfo)
+
+  ClearHasBit(_impl_._has_bits_[0], 0x00000001U);
+  ::Protocol::ObjectInfo* temp = _impl_.objectinfo_;
+  _impl_.objectinfo_ = nullptr;
+  return temp;
+}
+inline ::Protocol::ObjectInfo* PROTOBUF_NONNULL PlayerInfo::_internal_mutable_objectinfo() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (_impl_.objectinfo_ == nullptr) {
+    auto* p = ::google::protobuf::Message::DefaultConstruct<::Protocol::ObjectInfo>(GetArena());
+    _impl_.objectinfo_ = reinterpret_cast<::Protocol::ObjectInfo*>(p);
+  }
+  return _impl_.objectinfo_;
+}
+inline ::Protocol::ObjectInfo* PROTOBUF_NONNULL PlayerInfo::mutable_objectinfo()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  ::Protocol::ObjectInfo* _msg = _internal_mutable_objectinfo();
+  // @@protoc_insertion_point(field_mutable:Protocol.PlayerInfo.objectInfo)
+  return _msg;
+}
+inline void PlayerInfo::set_allocated_objectinfo(::Protocol::ObjectInfo* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::Arena* message_arena = GetArena();
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (message_arena == nullptr) {
+    delete reinterpret_cast<::google::protobuf::MessageLite*>(_impl_.objectinfo_);
+  }
+
+  if (value != nullptr) {
+    ::google::protobuf::Arena* submessage_arena = value->GetArena();
+    if (message_arena != submessage_arena) {
+      value = ::google::protobuf::internal::GetOwnedMessage(message_arena, value, submessage_arena);
+    }
+    SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000001U);
+  }
+
+  _impl_.objectinfo_ = reinterpret_cast<::Protocol::ObjectInfo*>(value);
+  // @@protoc_insertion_point(field_set_allocated:Protocol.PlayerInfo.objectInfo)
+}
+
+// int32 level = 2;
 inline void PlayerInfo::clear_level() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.level_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000004U);
+                  0x00000002U);
 }
 inline ::int32_t PlayerInfo::level() const {
   // @@protoc_insertion_point(field_get:Protocol.PlayerInfo.level)
@@ -407,7 +1159,7 @@ inline ::int32_t PlayerInfo::level() const {
 }
 inline void PlayerInfo::set_level(::int32_t value) {
   _internal_set_level(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000002U);
   // @@protoc_insertion_point(field_set:Protocol.PlayerInfo.level)
 }
 inline ::int32_t PlayerInfo::_internal_level() const {
