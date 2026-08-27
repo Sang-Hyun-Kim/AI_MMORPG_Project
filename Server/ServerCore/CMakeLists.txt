@@ -18,6 +18,7 @@ add_library(ServerCore STATIC
     CoreTLS.cpp
     GlobalQueue.cpp
     JobTimer.cpp
+    RedisManager.cpp
     Enum.pb.cc
     Struct.pb.cc
     Protocol.pb.cc
@@ -29,7 +30,7 @@ target_include_directories(ServerCore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # Protobuf 및 Abseil 링크 (필요한 타겟을 추가)
 target_link_libraries(ServerCore PUBLIC
     protobuf::libprotobuf
-    # absl 타겟들은 필요한 경우 여기에 추가합니다.
+    redis++::redis++
 )
 
 # 미리 컴파일된 헤더 (Precompiled Header) 설정

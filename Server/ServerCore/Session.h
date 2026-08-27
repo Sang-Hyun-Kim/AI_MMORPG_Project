@@ -43,6 +43,9 @@ public:
 	bool				IsConnected() { return _connected; }
 	SessionRef			GetSessionRef() { return std::static_pointer_cast<Session>(shared_from_this()); }
 
+	void				UpdateActiveTick();
+	uint64_t			GetLastActiveTick() { return _lastActiveTick.load(); }
+
 private:
 	/* 인터페이스 구현 */
 	virtual HANDLE		GetHandle() override;
@@ -74,6 +77,7 @@ private:
 	SOCKET				_socket = INVALID_SOCKET;
 	NetAddress			_netAddress = {};
 	std::atomic<bool>	_connected = false;
+	std::atomic<uint64_t> _lastActiveTick = 0;
 
 private:
 	/* 수신 관련 */

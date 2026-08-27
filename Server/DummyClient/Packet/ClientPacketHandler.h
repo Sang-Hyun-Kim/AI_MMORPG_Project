@@ -30,6 +30,8 @@ enum class PacketID : uint16
 	PKT_S_MOVE = 1009,
 	PKT_C_CHAT = 1010,
 	PKT_S_CHAT = 1011,
+	PKT_C_PING = 1012,
+	PKT_S_PONG = 1013,
 };
 
 // Custom Handlers
@@ -41,6 +43,7 @@ bool Handle_S_SPAWN(PacketSessionRef& session, Protocol::S_SPAWN& pkt);
 bool Handle_S_DESPAWN(PacketSessionRef& session, Protocol::S_DESPAWN& pkt);
 bool Handle_S_MOVE(PacketSessionRef& session, Protocol::S_MOVE& pkt);
 bool Handle_S_CHAT(PacketSessionRef& session, Protocol::S_CHAT& pkt);
+bool Handle_S_PONG(PacketSessionRef& session, Protocol::S_PONG& pkt);
 
 class ClientPacketHandler
 {
@@ -56,6 +59,7 @@ public:
 		GPacketHandler[static_cast<uint16>(PacketID::PKT_S_DESPAWN)] = [](PacketSessionRef& session, std::span<std::byte> buffer) { return HandlePacket<Protocol::S_DESPAWN>(Handle_S_DESPAWN, session, buffer); };
 		GPacketHandler[static_cast<uint16>(PacketID::PKT_S_MOVE)] = [](PacketSessionRef& session, std::span<std::byte> buffer) { return HandlePacket<Protocol::S_MOVE>(Handle_S_MOVE, session, buffer); };
 		GPacketHandler[static_cast<uint16>(PacketID::PKT_S_CHAT)] = [](PacketSessionRef& session, std::span<std::byte> buffer) { return HandlePacket<Protocol::S_CHAT>(Handle_S_CHAT, session, buffer); };
+		GPacketHandler[static_cast<uint16>(PacketID::PKT_S_PONG)] = [](PacketSessionRef& session, std::span<std::byte> buffer) { return HandlePacket<Protocol::S_PONG>(Handle_S_PONG, session, buffer); };
 	}
 
 	static bool HandlePacket(PacketSessionRef& session, std::span<std::byte> buffer)
@@ -68,6 +72,7 @@ public:
 	static SendBufferRef MakeSendBuffer(Protocol::C_LEAVE_GAME& pkt) { return MakeSendBuffer(pkt, static_cast<uint16>(PacketID::PKT_C_LEAVE_GAME)); }
 	static SendBufferRef MakeSendBuffer(Protocol::C_MOVE& pkt) { return MakeSendBuffer(pkt, static_cast<uint16>(PacketID::PKT_C_MOVE)); }
 	static SendBufferRef MakeSendBuffer(Protocol::C_CHAT& pkt) { return MakeSendBuffer(pkt, static_cast<uint16>(PacketID::PKT_C_CHAT)); }
+	static SendBufferRef MakeSendBuffer(Protocol::C_PING& pkt) { return MakeSendBuffer(pkt, static_cast<uint16>(PacketID::PKT_C_PING)); }
 
 private:
 	template<typename PacketType, typename ProcessFunc>

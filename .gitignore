@@ -87,3 +87,6 @@ LegacyProject/
 # Package Manager
 vcpkg/
 install_protobuf_vcpkg.ps1
+
+# QA Test Plans
+Docs/QA_TestPlan_*.md

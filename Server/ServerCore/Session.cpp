@@ -18,6 +18,11 @@ Session::~Session()
 	SocketUtils::Close(_socket);
 }
 
+void Session::UpdateActiveTick()
+{
+	_lastActiveTick.store(::GetTickCount64());
+}
+
 void Session::Send(SendBufferRef sendBuffer)
 {
 	if (IsConnected() == false)
@@ -197,6 +202,7 @@ void Session::ProcessConnect()
 {
 	_connectEvent.owner = nullptr; // RELEASE_REF
 	_connected.store(true);
+	UpdateActiveTick();
 	GetService()->AddSession(GetSessionRef());
 	OnConnected();
 	RegisterRecv();
@@ -212,6 +218,7 @@ void Session::ProcessDisconnect()
 void Session::ProcessRecv(int32 numOfBytes)
 {
 	_recvEvent.owner = nullptr; // RELEASE_REF
+	UpdateActiveTick();
 
 	if (numOfBytes == 0)
 	{

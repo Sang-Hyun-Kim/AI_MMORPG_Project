@@ -16,6 +16,7 @@ endif()
 # 의존성 찾기 (vcpkg 툴체인을 통해 연동됨)
 find_package(protobuf CONFIG REQUIRED)
 find_package(absl CONFIG REQUIRED)
+find_package(redis++ CONFIG REQUIRED)
 
 # 하위 디렉토리 추가
 add_subdirectory(ServerCore)

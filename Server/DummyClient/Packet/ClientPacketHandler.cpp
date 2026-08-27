@@ -80,3 +80,7 @@ bool Handle_S_CHAT(PacketSessionRef& session, Protocol::S_CHAT& pkt)
 {
 	return true;
 }
+bool Handle_S_PONG(PacketSessionRef& session, Protocol::S_PONG& pkt)
+{
+	return true;
+}

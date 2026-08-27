@@ -8,6 +8,7 @@
 
 #include "GameSession.h"
 #include "GameRoomManager.h"
+#include "RedisManager.h"
 
 int main()
 {
@@ -17,6 +18,12 @@ int main()
 	ServerPacketHandler::Init();
 	SocketUtils::Init();
 	GGameRoomManager->Init();
+	
+	GRedisManager = std::make_shared<RedisManager>();
+	if (!GRedisManager->Connect())
+	{
+		std::cout << "Redis Connect Failed!" << std::endl;
+	}
 
 	ServerServiceRef service = std::make_shared<ServerService>(
 		NetAddress(L"127.0.0.1", 7777),
@@ -26,18 +33,24 @@ int main()
 
 	ASSERT_CRASH(service->Start());
 
+	// Session Sweeper Thread (1초 주기)
+	std::thread sweeperThread([service]() {
+		while (true)
+		{
+			service->SweepSessions();
+			std::this_thread::sleep_for(std::chrono::seconds(1));
+		}
+	});
+
 	for (int32 i = 0; i < 5; i++)
 	{
 		GThreadManager->Launch([=](std::stop_token stopToken)
+		{
+			while (!stopToken.stop_requested())
 			{
-				while (!stopToken.stop_requested())
-				{
-					service->GetIocpCore()->Dispatch(10);
-					
-					// 예약된 JobTimer 분배 (메인루프 혹은 전담 워커에서 수행)
-					// GJobTimer->Distribute(::GetTickCount64());
-				}
-			});
+				service->GetIocpCore()->Dispatch(10);
+			}
+		});
 	}
 
 	std::cout << "GameServer is running on port 7777..." << std::endl;

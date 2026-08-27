@@ -33,6 +33,7 @@ public:
 	SessionRef			CreateSession();
 	void				AddSession(SessionRef session);
 	void				ReleaseSession(SessionRef session);
+	void				SweepSessions(); // 좀비 세션 정리
 	int32				GetCurrentSessionCount() { return _sessionCount; }
 	int32				GetMaxSessionCount() { return _maxSessionCount; }
 

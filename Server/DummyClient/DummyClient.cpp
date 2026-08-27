@@ -14,6 +14,7 @@ public:
 	{
 		// 접속 성공 시 C_LOGIN 패킷 전송
 		Protocol::C_LOGIN loginPkt;
+		loginPkt.set_ticket("dummy_ticket_test");
 		SendBufferRef sendBuffer = ClientPacketHandler::MakeSendBuffer(loginPkt);
 		Send(sendBuffer);
 	}
@@ -81,6 +82,17 @@ int main()
 
 	std::cout << "DummyClient is running..." << std::endl;
 
+	// PING 패킷 전송 스레드 (3초 주기)
+	std::thread pingThread([service]() {
+		while (true)
+		{
+			Protocol::C_PING pingPkt;
+			SendBufferRef sendBuffer = ClientPacketHandler::MakeSendBuffer(pingPkt);
+			service->Broadcast(sendBuffer);
+			std::this_thread::sleep_for(std::chrono::seconds(3));
+		}
+	});
+
 	// 메인 스레드는 클라이언트 측 작업(JobTimer) 분배를 담당
 	while (true)
 	{
@@ -89,5 +101,6 @@ int main()
 	}
 
 	GThreadManager->Join();
+	pingThread.join();
 	return 0;
 }
