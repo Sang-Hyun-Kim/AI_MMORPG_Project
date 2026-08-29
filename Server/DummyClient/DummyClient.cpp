@@ -14,7 +14,7 @@ public:
 	{
 		// 접속 성공 시 C_LOGIN 패킷 전송
 		Protocol::C_LOGIN loginPkt;
-		loginPkt.set_ticket("dummy_ticket_test");
+		loginPkt.set_ticket("a2f4e785e0bc4585b72b107ed6407bdc");
 		SendBufferRef sendBuffer = ClientPacketHandler::MakeSendBuffer(loginPkt);
 		Send(sendBuffer);
 	}

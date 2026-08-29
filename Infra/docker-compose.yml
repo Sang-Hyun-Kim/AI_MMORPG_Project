@@ -2,18 +2,18 @@ version: '3.8'
 services:
   mysql:
     image: mysql:8.0
-    container_name: mmorpg_mysql
+    container_name: mysql_AI_MMORPG
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: mmorpg_db
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
 
   redis:
     image: redis:alpine
-    container_name: mmorpg_redis
+    container_name: redis_AI_MMORPG
     ports:
       - "6379:6379"
     volumes:
@@ -21,7 +21,7 @@ services:
 
   mongodb:
     image: mongo:latest
-    container_name: mmorpg_mongodb
+    container_name: mongo_AI_MMORPG
     ports:
       - "27017:27017"
     volumes:
