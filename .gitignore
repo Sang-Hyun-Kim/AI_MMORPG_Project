@@ -24,19 +24,24 @@ obj/
 # ============================================================================
 # Unreal Engine 5 (Client)
 # ============================================================================
-Client/Binaries/
-Client/Build/
-Client/DerivedDataCache/
-Client/Intermediate/
-Client/Saved/
-Client/.idea/
-Client/.vscode/
-Client/.vs/
-Client/*.sln
-Client/*.suo
-Client/*.opensdf
-Client/*.sdf
-Client/*.xcworkspace
+Client/**/Binaries/
+Client/**/Build/
+Client/**/DerivedDataCache/
+Client/**/Intermediate/
+Client/**/Saved/
+Client/**/.idea/
+Client/**/.vscode/
+Client/**/.vs/
+Client/**/*.sln
+Client/**/*.suo
+Client/**/*.opensdf
+Client/**/*.sdf
+Client/**/*.xcworkspace
+
+# Ignore UE Assets and Content folder (Toy project, source code only)
+Client/**/Content/
+*.uasset
+*.umap
 
 # ============================================================================
 # C# ASP.NET Core (WebBackend)
@@ -98,3 +103,6 @@ Infra/.env
 
 # M9 Implementation Plan (로컬 전용 - 원격 미포함)
 Docs/M9_Implementation_Plan.md
+
+# Server Configurations
+Server/GameServer/Config.json

@@ -78,3 +78,7 @@ USING_SHARED_PTR(JobQueue);
 #include "CoreGlobal.h"
 #include "GlobalQueue.h"
 #include "JobTimer.h"
+#include "ConfigManager.h"
+#include "DBConnectionPool.h"
+#include "DBAwaitable.h"
+

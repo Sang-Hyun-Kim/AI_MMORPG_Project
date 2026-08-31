@@ -31,3 +31,13 @@ GameRoomRef GameRoomManager::GetRoom(uint32 roomId)
 		return it->second;
 	return nullptr;
 }
+
+void GameRoomManager::BroadcastAutoSave()
+{
+	std::lock_guard<std::mutex> lock(_lock);
+	for (auto& pair : _rooms)
+	{
+		// 각 방의 AutoSave(전체 유저 DB 저장)를 비동기로 예약합니다.
+		pair.second->DoAsync(&GameRoom::AutoSave);
+	}
+}

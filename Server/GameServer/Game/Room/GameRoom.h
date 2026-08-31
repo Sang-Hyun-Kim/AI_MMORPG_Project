@@ -10,11 +10,19 @@ public:
 
 	void Init();
 	void Update();
+	void AutoSave();
 
 	void Enter(GameObjectRef gameObject);
 	void Leave(GameObjectRef gameObject);
 
+	JobTask SavePlayerToDB(PlayerSaveData data);
+
 	void HandleMove(PlayerRef player, Protocol::C_MOVE pkt);
+	
+	// Phase 3: 고블린 사냥 및 상점 관련 핸들러
+	void HandleAttack(PlayerRef player, Protocol::C_ATTACK pkt);
+	void HandleCheckMailbox(PlayerRef player, Protocol::C_CHECK_MAILBOX pkt);
+	JobTask ProcessMailboxDB(PlayerRef player); // DB에서 우편함 비동기 조회 및 수령
 
 	void Broadcast(SendBufferRef sendBuffer);
 

@@ -1,0 +1,29 @@
+# ============================================================================
+# Unreal Engine 5 Git LFS Configuration
+# ============================================================================
+# Unreal Engine 파일 확장자 LFS 추적 및 잠금(Lockable) 설정
+*.uasset filter=lfs diff=lfs merge=lfs -text lockable
+*.umap filter=lfs diff=lfs merge=lfs -text lockable
+
+# 기타 리소스 에셋 LFS 추적 (Locking은 필요에 따라 추가 가능)
+*.fbx filter=lfs diff=lfs merge=lfs -text
+*.obj filter=lfs diff=lfs merge=lfs -text
+*.png filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
+*.tga filter=lfs diff=lfs merge=lfs -text
+*.wav filter=lfs diff=lfs merge=lfs -text
+*.mp3 filter=lfs diff=lfs merge=lfs -text
+*.mp4 filter=lfs diff=lfs merge=lfs -text
+*.ttf filter=lfs diff=lfs merge=lfs -text
+*.otf filter=lfs diff=lfs merge=lfs -text
+
+# ============================================================================
+# Core & Source Files (Text - No LFS)
+# ============================================================================
+*.cpp text
+*.h text
+*.cs text
+*.ini text
+*.json text
+*.md text

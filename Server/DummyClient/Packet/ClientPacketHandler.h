@@ -32,6 +32,10 @@ enum class PacketID : uint16
 	PKT_S_CHAT = 1011,
 	PKT_C_PING = 1012,
 	PKT_S_PONG = 1013,
+	PKT_C_ATTACK = 1014,
+	PKT_S_ATTACK = 1015,
+	PKT_S_STATUS_CHANGE = 1016,
+	PKT_C_CHECK_MAILBOX = 1017,
 };
 
 // Custom Handlers
@@ -44,6 +48,8 @@ bool Handle_S_DESPAWN(PacketSessionRef& session, Protocol::S_DESPAWN& pkt);
 bool Handle_S_MOVE(PacketSessionRef& session, Protocol::S_MOVE& pkt);
 bool Handle_S_CHAT(PacketSessionRef& session, Protocol::S_CHAT& pkt);
 bool Handle_S_PONG(PacketSessionRef& session, Protocol::S_PONG& pkt);
+bool Handle_S_ATTACK(PacketSessionRef& session, Protocol::S_ATTACK& pkt);
+bool Handle_S_STATUS_CHANGE(PacketSessionRef& session, Protocol::S_STATUS_CHANGE& pkt);
 
 class ClientPacketHandler
 {
@@ -60,6 +66,8 @@ public:
 		GPacketHandler[static_cast<uint16>(PacketID::PKT_S_MOVE)] = [](PacketSessionRef& session, std::span<std::byte> buffer) { return HandlePacket<Protocol::S_MOVE>(Handle_S_MOVE, session, buffer); };
 		GPacketHandler[static_cast<uint16>(PacketID::PKT_S_CHAT)] = [](PacketSessionRef& session, std::span<std::byte> buffer) { return HandlePacket<Protocol::S_CHAT>(Handle_S_CHAT, session, buffer); };
 		GPacketHandler[static_cast<uint16>(PacketID::PKT_S_PONG)] = [](PacketSessionRef& session, std::span<std::byte> buffer) { return HandlePacket<Protocol::S_PONG>(Handle_S_PONG, session, buffer); };
+		GPacketHandler[static_cast<uint16>(PacketID::PKT_S_ATTACK)] = [](PacketSessionRef& session, std::span<std::byte> buffer) { return HandlePacket<Protocol::S_ATTACK>(Handle_S_ATTACK, session, buffer); };
+		GPacketHandler[static_cast<uint16>(PacketID::PKT_S_STATUS_CHANGE)] = [](PacketSessionRef& session, std::span<std::byte> buffer) { return HandlePacket<Protocol::S_STATUS_CHANGE>(Handle_S_STATUS_CHANGE, session, buffer); };
 	}
 
 	static bool HandlePacket(PacketSessionRef& session, std::span<std::byte> buffer)
@@ -73,6 +81,8 @@ public:
 	static SendBufferRef MakeSendBuffer(Protocol::C_MOVE& pkt) { return MakeSendBuffer(pkt, static_cast<uint16>(PacketID::PKT_C_MOVE)); }
 	static SendBufferRef MakeSendBuffer(Protocol::C_CHAT& pkt) { return MakeSendBuffer(pkt, static_cast<uint16>(PacketID::PKT_C_CHAT)); }
 	static SendBufferRef MakeSendBuffer(Protocol::C_PING& pkt) { return MakeSendBuffer(pkt, static_cast<uint16>(PacketID::PKT_C_PING)); }
+	static SendBufferRef MakeSendBuffer(Protocol::C_ATTACK& pkt) { return MakeSendBuffer(pkt, static_cast<uint16>(PacketID::PKT_C_ATTACK)); }
+	static SendBufferRef MakeSendBuffer(Protocol::C_CHECK_MAILBOX& pkt) { return MakeSendBuffer(pkt, static_cast<uint16>(PacketID::PKT_C_CHECK_MAILBOX)); }
 
 private:
 	template<typename PacketType, typename ProcessFunc>

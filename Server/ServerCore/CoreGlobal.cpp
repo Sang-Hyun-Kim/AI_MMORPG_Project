@@ -8,6 +8,8 @@
 ThreadManager* GThreadManager = nullptr;
 GlobalQueue* GGlobalQueue = nullptr;
 JobTimer* GJobTimer = nullptr;
+std::shared_ptr<ConfigManager> GConfigManager = nullptr;
+std::shared_ptr<DBConnectionPool> GDBConnectionPool = nullptr;
 
 class CoreGlobal
 {
@@ -17,6 +19,8 @@ public:
 		GThreadManager = new ThreadManager();
 		GGlobalQueue = new GlobalQueue();
 		GJobTimer = new JobTimer();
+		GConfigManager = std::make_shared<ConfigManager>();
+		GDBConnectionPool = std::make_shared<DBConnectionPool>();
 		SocketUtils::Init();
 	}
 

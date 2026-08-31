@@ -79,3 +79,31 @@ bool Handle_C_PING(PacketSessionRef& session, Protocol::C_PING& pkt)
 	session->Send(sendBuffer);
 	return true;
 }
+bool Handle_C_ATTACK(PacketSessionRef& session, Protocol::C_ATTACK& pkt)
+{
+	GameSessionRef gameSession = std::static_pointer_cast<GameSession>(session);
+	PlayerRef player = gameSession->GetPlayer();
+	if (player == nullptr)
+		return false;
+
+	GameRoomRef room = player->GetRoom();
+	if (room == nullptr)
+		return false;
+
+	room->DoAsync(&GameRoom::HandleAttack, player, pkt);
+	return true;
+}
+bool Handle_C_CHECK_MAILBOX(PacketSessionRef& session, Protocol::C_CHECK_MAILBOX& pkt)
+{
+	GameSessionRef gameSession = std::static_pointer_cast<GameSession>(session);
+	PlayerRef player = gameSession->GetPlayer();
+	if (player == nullptr)
+		return false;
+
+	GameRoomRef room = player->GetRoom();
+	if (room == nullptr)
+		return false;
+
+	room->DoAsync(&GameRoom::HandleCheckMailbox, player, pkt);
+	return true;
+}

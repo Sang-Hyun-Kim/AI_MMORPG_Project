@@ -76,3 +76,30 @@ message C_PING
 message S_PONG
 {
 }
+
+// ----------------------
+// Phase 3: 임시 시나리오 패킷
+// ----------------------
+
+message C_ATTACK // 고블린 사냥 공격 패킷
+{
+	uint64 targetId = 1;
+}
+
+message S_ATTACK
+{
+	uint64 objectId = 1;
+	uint64 targetId = 2;
+	bool isKilled = 3; // 사망 여부
+}
+
+message S_STATUS_CHANGE // 재화/아이템 변경 알림
+{
+	uint64 objectId = 1;
+	int32 gold = 2; // 변경 후 최종 골드
+}
+
+message C_CHECK_MAILBOX // 우편함 수령 요청 (결제 후)
+{
+	// 우편함은 DB에서 긁어오므로 추가 인자 불필요
+}

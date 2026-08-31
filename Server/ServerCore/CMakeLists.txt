@@ -22,6 +22,8 @@ add_library(ServerCore STATIC
     Enum.pb.cc
     Struct.pb.cc
     Protocol.pb.cc
+    ConfigManager.cpp
+    DBConnectionPool.cpp
 )
 
 # 인클루드 경로 설정 (현재 디렉토리)
