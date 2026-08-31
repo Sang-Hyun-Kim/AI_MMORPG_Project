@@ -33,9 +33,9 @@ int main()
 
 	ASSERT_CRASH(service->Start());
 
-	// Session Sweeper Thread (1초 주기)
-	std::thread sweeperThread([service]() {
-		while (true)
+	// Session Sweeper Thread (1초 주기, C++20 jthread + stop_token)
+	GThreadManager->Launch([service](std::stop_token stopToken) {
+		while (!stopToken.stop_requested())
 		{
 			service->SweepSessions();
 			std::this_thread::sleep_for(std::chrono::seconds(1));

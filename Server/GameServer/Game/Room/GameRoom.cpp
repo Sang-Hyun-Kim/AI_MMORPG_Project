@@ -13,20 +13,18 @@ GameRoom::~GameRoom()
 
 void GameRoom::Init()
 {
-	DoAsync(&GameRoom::Update);
+	// 최초 틱 예약: 50ms 후 첫 Update 실행
+	DoTimer(50, &GameRoom::Update);
 }
 
 void GameRoom::Update()
 {
-	// 50ms마다 틱 실행 (JobTimer 이용)
+	// 50ms마다 틱 실행 (JobTimer 기반 예약)
 	// TODO: 몬스터 AI 틱 처리 및 패킷 Flush 처리
 
-	// 다음 틱 예약 (자신이 소속된 큐에 예약)
-	// GJobTimer->Reserve를 감싸는 유틸을 구현하거나 직접 호출
-	// GJobTimer는 GlobalTimer로서 tick count 기반 동작
-	DoAsync(&GameRoom::Update);
-	// 실전에서는 DoTimer(50, &GameRoom::Update) 형태로 예약해야 함.
-	// 현재 JobTimer는 Global 단위이므로 임시로 Sleep이나 틱 기반 로직 처리.
+	// 다음 틱을 50ms 후로 예약 (스레드를 즉시 반납)
+	// GJobTimer의 Distribute 주기(현재 100ms)에 따라 실제 실행은 50~150ms 범위
+	DoTimer(50, &GameRoom::Update);
 }
 
 void GameRoom::Enter(GameObjectRef gameObject)

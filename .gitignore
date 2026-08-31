@@ -76,6 +76,8 @@ Docs/AI_HANDOFF.md
 Docs/Cpp20_Migration_Guide.md
 Docs/Cpp20_Migration_Comparison.md
 Docs/Code_Specification.md
+# Project Analysis 스냅샷 (로컬 전용 - 원격 미포함)
+Docs/ProjectAnalysis_*.md
 
 # ============================================================================
 # Project Specific
@@ -93,3 +95,6 @@ Docs/QA_TestPlan_*.md
 
 # Environment Variables
 Infra/.env
+
+# M9 Implementation Plan (로컬 전용 - 원격 미포함)
+Docs/M9_Implementation_Plan.md

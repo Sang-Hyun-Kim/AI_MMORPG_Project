@@ -24,9 +24,28 @@ public:
 		Push(std::make_shared<Job>(owner, memFunc, std::forward<Args>(args)...));
 	}
 
+	// 지연 실행 (예약 후 즉시 스레드 반납, GJobTimer가 만료 시 Push)
+	void DoTimer(uint64 tickAfter, CallbackType&& callback)
+	{
+		JobRef job = std::make_shared<Job>(std::move(callback));
+		ReserveJob(tickAfter, job);
+	}
+
+	template<typename T, typename Ret, typename... Args>
+	void DoTimer(uint64 tickAfter, Ret(T::*memFunc)(Args...), Args... args)
+	{
+		std::shared_ptr<T> owner = std::static_pointer_cast<T>(shared_from_this());
+		JobRef job = std::make_shared<Job>(owner, memFunc, std::forward<Args>(args)...);
+		ReserveJob(tickAfter, job);
+	}
+
 public:
 	void					Push(JobRef job, bool pushOnly = false);
 	void					Execute();
+
+private:
+	// GJobTimer->Reserve를 호출하는 헬퍼. 순환 참조 방지를 위해 구현은 .cpp에 배치.
+	void					ReserveJob(uint64 tickAfter, JobRef job);
 
 protected:
 	// 뮤텍스 기반 큐 대신 완벽한 Lock-Free 큐를 사용합니다.
@@ -37,3 +56,4 @@ protected:
 };
 
 using JobQueueRef = std::shared_ptr<JobQueue>;
+

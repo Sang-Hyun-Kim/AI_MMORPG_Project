@@ -1,5 +1,11 @@
 #include "CorePch.h"
 #include "JobQueue.h"
+#include "JobTimer.h"
+
+void JobQueue::ReserveJob(uint64 tickAfter, JobRef job)
+{
+	GJobTimer->Reserve(tickAfter, shared_from_this(), job);
+}
 
 void JobQueue::Push(JobRef job, bool pushOnly)
 {
