@@ -8,6 +8,8 @@
 #include <span>
 #include <functional>
 
+
+
 // C++20: std::span을 활용하여 버퍼 오버플로우를 방지하는 모던 핸들러 시그니처
 using PacketHandlerFunc = std::function<bool(PacketSessionRef&, std::span<std::byte>)>;
 extern std::array<PacketHandlerFunc, UINT16_MAX> GPacketHandler;

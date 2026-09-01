@@ -9,6 +9,7 @@ def main():
 	arg_parser.add_argument('--output', type=str, default='ClientPacketHandler', help='output file')
 	arg_parser.add_argument('--recv', type=str, default='C_', help='recv convention')
 	arg_parser.add_argument('--send', type=str, default='S_', help='send convention')
+	arg_parser.add_argument('--ue_project', type=str, default='', help='Unreal Engine project name for headers')
 	args = arg_parser.parse_args()
 
 	parser = ProtoParser.ProtoParser(1000, args.recv, args.send)
@@ -17,7 +18,7 @@ def main():
 	env = jinja2.Environment(loader=file_loader)
 
 	template = env.get_template('PacketHandler.h')
-	output = template.render(parser=parser, output=args.output)
+	output = template.render(parser=parser, output=args.output, ue_project=args.ue_project)
 	f = open(args.output+'.h', 'w+')
 	f.write(output)
 	f.close()
