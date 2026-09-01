@@ -3,13 +3,10 @@
 #include "CorePch.h"
 #include "Session.h"
 #include "SendBuffer.h"
+
 #include <array>
 #include <span>
 #include <functional>
-
-#if UE_BUILD_DEBUG + UE_BUILD_DEVELOPMENT + UE_BUILD_TEST + UE_BUILD_SHIPPING >= 1
-#include "S1.h"
-#endif
 
 // C++20: std::span을 활용하여 버퍼 오버플로우를 방지하는 모던 핸들러 시그니처
 using PacketHandlerFunc = std::function<bool(PacketSessionRef&, std::span<std::byte>)>;
