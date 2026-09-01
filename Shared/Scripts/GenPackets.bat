@@ -12,7 +12,7 @@ if not exist %DUMMY_OUT% mkdir %DUMMY_OUT%
 %PROTOC_PATH% -I=..\Protobuf --cpp_out=%CORE_OUT% ..\Protobuf\Enum.proto ..\Protobuf\Struct.proto ..\Protobuf\Protocol.proto
 
 REM UE_OUT is temporarily disabled since the Client project is being reinstalled.
-REM python PacketGenerator.py --path=%PROTO_PATH% --output=ClientPacketHandler --recv=S_ --send=C_ --ue_project AI_MMORPG_Client
+REM python PacketGenerator.py --path=%PROTO_PATH% --output=ClientPacketHandler --recv=S_ --send=C_ --ue_project AMC1
 python PacketGenerator.py --path=%PROTO_PATH% --output=ClientPacketHandler --recv=S_ --send=C_
 
 python PacketGenerator.py --path=%PROTO_PATH% --output=ServerPacketHandler --recv=C_ --send=S_
