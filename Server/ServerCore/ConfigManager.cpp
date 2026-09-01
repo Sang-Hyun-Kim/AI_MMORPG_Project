@@ -1,4 +1,4 @@
-#include "pch.h"
+#include "CorePch.h"
 #include "ConfigManager.h"
 #include "json.hpp"
 #include <fstream>
@@ -6,7 +6,6 @@
 
 using json = nlohmann::json;
 
-std::shared_ptr<ConfigManager> GConfigManager = nullptr;
 
 bool ConfigManager::Init(const std::string& path)
 {

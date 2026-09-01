@@ -1,8 +1,40 @@
 #pragma once
+
+{% if ue_project %}
+#if UE_BUILD_DEBUG + UE_BUILD_DEVELOPMENT + UE_BUILD_TEST + UE_BUILD_SHIPPING >= 1
+#include "CoreMinimal.h"
+#pragma push_macro("check")
+#pragma push_macro("verify")
+#pragma push_macro("ensure")
+#pragma push_macro("cast")
+#undef check
+#undef verify
+#undef ensure
+#undef cast
+THIRD_PARTY_INCLUDES_START
+#pragma warning(push)
+#pragma warning(disable: 4127 4668 4800 4583 4582 5054 4244 4267 4946 4125 4647)
+#pragma pack(push, 8)
+#include "Protocol.pb.h"
+#pragma pack(pop)
+#pragma warning(pop)
+THIRD_PARTY_INCLUDES_END
+#pragma pop_macro("cast")
+#pragma pop_macro("ensure")
+#pragma pop_macro("verify")
+#pragma pop_macro("check")
+#else
 #include "Protocol.pb.h"
 #include "CorePch.h"
 #include "Session.h"
 #include "SendBuffer.h"
+#endif
+{% else %}
+#include "Protocol.pb.h"
+#include "CorePch.h"
+#include "Session.h"
+#include "SendBuffer.h"
+{% endif %}
 
 #include <array>
 #include <span>
@@ -10,7 +42,7 @@
 
 {% if ue_project %}
 #if UE_BUILD_DEBUG + UE_BUILD_DEVELOPMENT + UE_BUILD_TEST + UE_BUILD_SHIPPING >= 1
-#include "{{ue_project}}.h"
+#include "../{{ue_project}}.h"
 #endif
 {% endif %}
 
@@ -80,7 +112,11 @@ private:
 		SendBufferRef sendBuffer = make_shared<SendBuffer>(packetSize);
 #endif
 
+#if UE_BUILD_DEBUG + UE_BUILD_DEVELOPMENT + UE_BUILD_TEST + UE_BUILD_SHIPPING >= 1
+		PacketHeader* header = reinterpret_cast<PacketHeader*>(sendBuffer->Buffer().GetData());
+#else
 		PacketHeader* header = reinterpret_cast<PacketHeader*>(sendBuffer->Buffer().data());
+#endif
 		header->size = packetSize;
 		header->id = pktId;
 		pkt.SerializeToArray(&header[1], dataSize);

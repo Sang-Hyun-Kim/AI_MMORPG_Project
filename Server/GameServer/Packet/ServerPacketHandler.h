@@ -1,8 +1,11 @@
 #pragma once
+
+
 #include "Protocol.pb.h"
 #include "CorePch.h"
 #include "Session.h"
 #include "SendBuffer.h"
+
 
 #include <array>
 #include <span>
@@ -105,7 +108,11 @@ private:
 		SendBufferRef sendBuffer = make_shared<SendBuffer>(packetSize);
 #endif
 
+#if UE_BUILD_DEBUG + UE_BUILD_DEVELOPMENT + UE_BUILD_TEST + UE_BUILD_SHIPPING >= 1
+		PacketHeader* header = reinterpret_cast<PacketHeader*>(sendBuffer->Buffer().GetData());
+#else
 		PacketHeader* header = reinterpret_cast<PacketHeader*>(sendBuffer->Buffer().data());
+#endif
 		header->size = packetSize;
 		header->id = pktId;
 		pkt.SerializeToArray(&header[1], dataSize);

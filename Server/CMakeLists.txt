@@ -17,6 +17,7 @@ endif()
 find_package(protobuf CONFIG REQUIRED)
 find_package(absl CONFIG REQUIRED)
 find_package(redis++ CONFIG REQUIRED)
+find_package(unofficial-libmysql CONFIG REQUIRED)
 
 # 하위 디렉토리 추가
 add_subdirectory(ServerCore)

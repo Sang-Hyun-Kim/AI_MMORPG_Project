@@ -2,6 +2,9 @@
 #include "Sockets.h"
 #include "SocketSubsystem.h"
 #include "HAL/RunnableThread.h"
+#include "ClientPacketHandler.h"
+#include "../AMC1.h"
+#include "Engine/Engine.h"
 
 FNetworkWorker::FNetworkWorker(FSocket* InSocket)
 	: Socket(InSocket), bRunning(false), Thread(nullptr)
@@ -39,6 +42,26 @@ uint32 FNetworkWorker::Run()
 			if (bRecv && ReadBytes > 0)
 			{
 				UE_LOG(LogTemp, Log, TEXT("[FNetworkWorker] Received %d bytes from Server."), ReadBytes);
+				// 수신 바이트 로깅은 너무 많을 수 있으니 화면 출력은 생략하거나 작게 유지
+				
+				// Protobuf Parsing Loop
+				PacketSessionRef DummySession = nullptr; // 향후 세션 객체로 대체
+				
+				int32 ProcessedBytes = 0;
+				while (ProcessedBytes < ReadBytes)
+				{
+					if (ReadBytes - ProcessedBytes < sizeof(PacketHeader))
+						break; // 헤더조차 다 안 왔음
+
+					PacketHeader* Header = reinterpret_cast<PacketHeader*>(&RecvBuffer[ProcessedBytes]);
+					if (ReadBytes - ProcessedBytes < Header->size)
+						break; // 패킷 바디가 덜 왔음
+
+					std::span<std::byte> PacketSpan(reinterpret_cast<std::byte*>(&RecvBuffer[ProcessedBytes]), Header->size);
+					ClientPacketHandler::HandlePacket(DummySession, PacketSpan);
+
+					ProcessedBytes += Header->size;
+				}
 			}
 		}
 		else

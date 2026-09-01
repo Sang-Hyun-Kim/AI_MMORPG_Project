@@ -33,6 +33,7 @@ target_include_directories(ServerCore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(ServerCore PUBLIC
     protobuf::libprotobuf
     redis++::redis++
+    unofficial::libmysql::libmysql
 )
 
 # 미리 컴파일된 헤더 (Precompiled Header) 설정

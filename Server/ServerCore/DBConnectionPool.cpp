@@ -1,8 +1,6 @@
-#include "pch.h"
+#include "CorePch.h"
 #include "DBConnectionPool.h"
 #include <iostream>
-
-std::shared_ptr<DBConnectionPool> GDBConnectionPool = nullptr;
 
 /*----------------
     DBConnection

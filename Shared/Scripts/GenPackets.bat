@@ -6,14 +6,16 @@ set CORE_OUT=..\..\Server\ServerCore
 set GAME_OUT=..\..\Server\GameServer\Packet
 set DUMMY_OUT=..\..\Server\DummyClient\Packet
 
+set UE_OUT=..\..\Client\AMC1\Source\AMC1\Network
+
 if not exist %GAME_OUT% mkdir %GAME_OUT%
 if not exist %DUMMY_OUT% mkdir %DUMMY_OUT%
+if not exist %UE_OUT% mkdir %UE_OUT%
 
 %PROTOC_PATH% -I=..\Protobuf --cpp_out=%CORE_OUT% ..\Protobuf\Enum.proto ..\Protobuf\Struct.proto ..\Protobuf\Protocol.proto
+%PROTOC_PATH% -I=..\Protobuf --cpp_out=%UE_OUT% ..\Protobuf\Enum.proto ..\Protobuf\Struct.proto ..\Protobuf\Protocol.proto
 
-REM UE_OUT is temporarily disabled since the Client project is being reinstalled.
-REM python PacketGenerator.py --path=%PROTO_PATH% --output=ClientPacketHandler --recv=S_ --send=C_ --ue_project AMC1
-python PacketGenerator.py --path=%PROTO_PATH% --output=ClientPacketHandler --recv=S_ --send=C_
+python PacketGenerator.py --path=%PROTO_PATH% --output=ClientPacketHandler --recv=S_ --send=C_ --ue_project AMC1
 
 python PacketGenerator.py --path=%PROTO_PATH% --output=ServerPacketHandler --recv=C_ --send=S_
 
@@ -21,6 +23,9 @@ move ServerPacketHandler.h %GAME_OUT%\ServerPacketHandler.h
 
 copy ClientPacketHandler.h %DUMMY_OUT%\ClientPacketHandler.h
 
-echo Done!
+move ClientPacketHandler.h %UE_OUT%\ClientPacketHandler.h
+
+echo Patching UE protobuf files with THIRD_PARTY_INCLUDES macros...
+powershell -ExecutionPolicy Bypass -File .\PatchUEProtobuf.ps1
 
 echo Done!

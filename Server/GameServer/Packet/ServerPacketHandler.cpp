@@ -12,6 +12,8 @@ bool Handle_INVALID(PacketSessionRef& session, std::span<std::byte> buffer)
 }
 bool Handle_C_LOGIN(PacketSessionRef& session, Protocol::C_LOGIN& pkt)
 {
+	std::wcout << L"[ServerPacketHandler] C_LOGIN Received! Ticket: " << pkt.ticket().c_str() << std::endl;
+
 	if (GRedisManager && GRedisManager->GetRedis())
 	{
 		std::string ticket = pkt.ticket();
@@ -43,6 +45,15 @@ bool Handle_C_LOGIN(PacketSessionRef& session, Protocol::C_LOGIN& pkt)
 			session->Disconnect(L"Invalid Ticket");
 			return false;
 		}
+	}
+	else
+	{
+		std::wcout << L"[ServerPacketHandler] Redis is offline. Bypassing login validation for testing." << std::endl;
+		Protocol::S_LOGIN loginPkt;
+		loginPkt.set_success(true);
+		SendBufferRef sendBuffer = ServerPacketHandler::MakeSendBuffer(loginPkt);
+		session->Send(sendBuffer);
+		return true;
 	}
 	return false;
 }

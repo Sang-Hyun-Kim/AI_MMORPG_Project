@@ -19,3 +19,10 @@ target_include_directories(GameServer PRIVATE
 
 # ServerCore 링크 (CorePch 등 헤더 포함)
 target_link_libraries(GameServer PRIVATE ServerCore protobuf::libprotobuf)
+
+# 빌드 후 Config.json을 실행 파일 위치로 자동 복사
+add_custom_command(TARGET GameServer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${CMAKE_CURRENT_SOURCE_DIR}/Config.json"
+    "$<TARGET_FILE_DIR:GameServer>"
+)
