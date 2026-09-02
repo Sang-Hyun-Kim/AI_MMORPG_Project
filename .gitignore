@@ -75,6 +75,11 @@ env/
 .clangd/
 compile_commands.json
 
+# MCP 디버깅용 파이썬 스크립트 및 JSON 덤프 파일들
+mcp_*.py
+dump_mcp_*.py
+mcp_*.json
+
 # AI Logs (개인 진행 로그, 인수인계, 개인 학습 로그 파일은 원격에 미포함)
 Docs/ProgressLogs/
 Docs/AI_HANDOFF.md

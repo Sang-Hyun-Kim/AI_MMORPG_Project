@@ -81,3 +81,12 @@ void UAMC1GameInstance::DisconnectFromServer()
 		UE_LOG(LogTemp, Log, TEXT("[UAMC1GameInstance] Socket Closed and Destroyed."));
 	}
 }
+
+void UAMC1GameInstance::SendPacket(TSharedPtr<class SendBuffer> SendBuf)
+{
+	if (Socket && SendBuf.IsValid())
+	{
+		int32 BytesSent = 0;
+		Socket->Send(SendBuf->Buffer().GetData(), SendBuf->Buffer().Num(), BytesSent);
+	}
+}

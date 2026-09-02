@@ -7,6 +7,9 @@
 
 #include "ClientPacketHandler.h"
 
+#include <atomic>
+static std::atomic<int32> GTicketIdCounter = 0;
+
 class ServerSession : public PacketSession
 {
 public:
@@ -14,10 +17,12 @@ public:
 	{
 		// 접속 성공 시 C_LOGIN 패킷 전송
 		Protocol::C_LOGIN loginPkt;
-		loginPkt.set_ticket("a2f4e785e0bc4585b72b107ed6407bdc");
+		std::string ticket = "test_ticket_" + std::to_string(GTicketIdCounter.fetch_add(1));
+		loginPkt.set_ticket(ticket);
 		SendBufferRef sendBuffer = ClientPacketHandler::MakeSendBuffer(loginPkt);
 		Send(sendBuffer);
 	}
+
 
 	virtual void OnDisconnected() override
 	{
@@ -63,8 +68,9 @@ int main()
 		NetAddress(L"127.0.0.1", 7777),
 		std::make_shared<IocpCore>(),
 		[]() { return std::make_shared<ServerSession>(); }, // Session Factory
-		50 // 라이프사이클 테스트용 50개 접속
+		5 // 테스트를 위한 임의 세션 개수 추가(5)
 	);
+
 
 	ASSERT_CRASH(service->Start());
 

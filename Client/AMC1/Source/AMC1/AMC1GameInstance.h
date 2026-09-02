@@ -18,6 +18,8 @@ public:
 
 	void ConnectToServer();
 	void DisconnectFromServer();
+	
+	void SendPacket(TSharedPtr<class SendBuffer> SendBuf);
 
 private:
 	FSocket* Socket;
