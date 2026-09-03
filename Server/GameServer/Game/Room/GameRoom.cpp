@@ -102,24 +102,57 @@ void GameRoom::Leave(GameObjectRef gameObject) {
 JobTask GameRoom::SavePlayerToDB(PlayerSaveData data) {
   auto jobQueue = shared_from_this();
 
+  /*
+   * [2026-09-04] UPDATE → UPSERT 전환 (결함 F7 3번째 겹)
+   *
+   * 변경 전:
+   *     UPDATE Player SET Gold = .., PosX = .. WHERE PlayerId = <id>;
+   *     if (conn->Execute(query)) { }
+   *
+   * 문제:
+   *   playerId가 프로세스 카운터(1, 2, 3…)였는데 DB에는 mailbox.sql이 넣은
+   *   PlayerId=0인 DummyPlayer 한 행뿐이라 **일치하는 행이 없었습니다.**
+   *   MySQL은 0행을 갱신해도 쿼리를 성공으로 처리하므로 Execute()는 true를
+   *   반환했고, 아래 "DB Save Complete" 로그가 정상 출력되었습니다.
+   *   즉 **로그는 저장됐다고 말했지만 DB는 한 번도 바뀌지 않았습니다.**
+   *   이것이 "이동해도 매번 같은 자리에서 시작"의 원인 중 하나입니다.
+   *
+   * 조치:
+   *   1) INSERT ... ON DUPLICATE KEY UPDATE로 바꿔, 행이 없으면 만들고 있으면 갱신.
+   *   2) GetAffectedRows()로 실제 반영 여부를 확인해 로그가 거짓말하지 않게 함.
+   *      (MySQL의 affected_rows는 INSERT=1, UPDATE=2, 변경 없음=0을 반환합니다.
+   *       0이어도 "값이 이미 같아서 갱신할 게 없었다"는 정상 케이스일 수 있으므로
+   *       실패로 단정하지 않고 구분해 로깅합니다.)
+   *   3) [F9] Level을 저장 대상에 포함.
+   */
   auto dbJob = [data](DBConnection *conn) {
-    // 간단한 UPDATE 쿼리 조립 (향후 PreparedStatement 고려)
-    std::string query =
-        "UPDATE Player SET Gold = " + std::to_string(data.gold) +
-        ", PosX = " + std::to_string(data.x) +
-        ", PosY = " + std::to_string(data.y) +
-        ", PosZ = " + std::to_string(data.z) +
-        " WHERE PlayerId = " + std::to_string(data.playerId) + ";";
+    const std::string query =
+        "INSERT INTO Player (PlayerId, Name, Level, Gold, PosX, PosY, PosZ) VALUES (" +
+        std::to_string(data.playerId) + ", '" + conn->EscapeString(data.name) + "', " +
+        std::to_string(data.level) + ", " + std::to_string(data.gold) + ", " +
+        std::to_string(data.x) + ", " + std::to_string(data.y) + ", " +
+        std::to_string(data.z) + ") " +
+        "ON DUPLICATE KEY UPDATE "
+        "Level = VALUES(Level), Gold = VALUES(Gold), "
+        "PosX = VALUES(PosX), PosY = VALUES(PosY), PosZ = VALUES(PosZ)";
 
-    if (conn->Execute(query)) {
-      // 성공 시 콘솔 로깅 등
+    if (conn->Execute(query) == false) {
+      std::cout << "[GameRoom] DB Save FAILED. PlayerId=" << data.playerId << std::endl;
+      return;
+    }
+
+    const uint64 affected = conn->GetAffectedRows();
+    if (affected == 0) {
+      // 쿼리는 성공했으나 반영된 행이 없음 = 저장할 변경이 없었음.
+      std::cout << "[GameRoom] DB Save: no change. PlayerId=" << data.playerId << std::endl;
     }
   };
 
   co_await DBAwaitable(dbJob, jobQueue);
 
-  std::cout << "Player " << data.name
-            << " DB Save Complete (Coroutine Resumed)." << std::endl;
+  std::cout << "Player " << data.name << " (PlayerId=" << data.playerId
+            << ") DB Save Complete. Pos=(" << data.x << ", " << data.y << ", "
+            << data.z << ") Gold=" << data.gold << std::endl;
 }
 
 void GameRoom::HandleMove(PlayerRef player, Protocol::C_MOVE pkt) {

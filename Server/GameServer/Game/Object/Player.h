@@ -23,6 +23,10 @@ struct PlayerSaveData
 	float y = 0;
 	float z = 0;
 	int32 gold = 0;
+	// [F9 / 2026-09-04] 캐릭터 레벨. 과거에는 이 필드가 없어서 DB의 Level 컬럼을
+	// 읽지도 쓰지도 않았고, 그 결과 MakePlayerInfo()가 항상 level=0을 전송했습니다.
+	// ⚠️ 맵/존 ID가 아닙니다. 맵 기획은 미착수 상태이며 스키마에도 컬럼이 없습니다.
+	int32 level = 1;
 };
 
 class Player : public GameObject
