@@ -101,6 +101,13 @@ void Listener::ProcessAccept(AcceptEvent* acceptEvent)
 		return;
 	}
 
+	// [N4] Nagle 알고리즘 비활성화.
+	// 로컬 루프백에서는 영향이 거의 없어 지금까지 드러나지 않았으나,
+	// AWS EC2 등 WAN 구간에서는 Nagle + Delayed ACK 상호작용으로
+	// 소형 패킷(이동/공격)에 수십 ms의 지연이 붙어 이동 동기화가 끊겨 보입니다.
+	// 실시간 액션 동기화를 표방하는 이상 accept 직후 반드시 꺼야 합니다.
+	SocketUtils::SetTcpNoDelay(session->GetSocket(), true);
+
 	SOCKADDR_IN sockAddress;
 	int32 sizeOfSockAddr = sizeof(sockAddress);
 	if (SOCKET_ERROR == ::getpeername(session->GetSocket(), OUT reinterpret_cast<SOCKADDR*>(&sockAddress), &sizeOfSockAddr))

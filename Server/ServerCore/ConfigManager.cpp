@@ -26,6 +26,7 @@ bool ConfigManager::Init(const std::string& path)
         // value(key, default_value) 형태를 사용하여 키가 없을 때의 기본값을 보장합니다.
         if (j.contains("Server"))
         {
+            serverConfig.bindAddress = j["Server"].value("BindAddress", std::string("0.0.0.0"));
             serverConfig.port = j["Server"].value("Port", 7777);
             serverConfig.maxSession = j["Server"].value("MaxSession", 1000);
         }
@@ -45,7 +46,8 @@ bool ConfigManager::Init(const std::string& path)
             databaseConfig.redisString = j["Database"].value("Redis", "");
         }
 
-        std::cout << "Config loaded successfully. Port: " << serverConfig.port << std::endl;
+        std::cout << "Config loaded successfully. Bind: " << serverConfig.bindAddress
+                  << " Port: " << serverConfig.port << std::endl;
         return true;
     }
     catch (const json::exception& e)

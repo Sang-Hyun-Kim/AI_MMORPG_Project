@@ -4,7 +4,7 @@
 #include "../Manager/AMC1ObjectManager.h"
 #include "Engine/Engine.h"
 
-std::array<PacketHandlerFunc, UINT16_MAX> GPacketHandler;
+std::array<PacketHandlerFunc, UINT16_MAX + 1> GPacketHandler; // [S2] 65536칸
 TWeakObjectPtr<UAMC1GameInstance> ClientPacketHandler::GGameInstance = nullptr;
 
 bool Handle_INVALID(PacketSessionRef& session, std::span<std::byte> buffer)

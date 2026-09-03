@@ -67,8 +67,14 @@ int main() {
     std::cout << "MySQL Connected Successfully." << std::endl;
   }
 
+  // [B1] 리슨 주소를 Config.json의 Server.BindAddress에서 읽습니다.
+  // 과거에는 L"127.0.0.1"이 하드코딩되어 있어, AWS EC2에 배포해도 루프백에만
+  // 바인딩되므로 보안 그룹과 Elastic IP를 열어도 외부 접속이 성립하지 않았습니다.
+  const std::string& bindAddr = GConfigManager->serverConfig.bindAddress;
+  const std::wstring bindAddrW(bindAddr.begin(), bindAddr.end());
+
   ServerServiceRef service = std::make_shared<ServerService>(
-      NetAddress(L"127.0.0.1", GConfigManager->serverConfig.port),
+      NetAddress(bindAddrW, GConfigManager->serverConfig.port),
       std::make_shared<IocpCore>(),
       []() { return std::make_shared<GameSession>(); }, 100);
 

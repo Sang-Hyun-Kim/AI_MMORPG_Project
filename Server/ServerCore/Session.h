@@ -110,6 +110,15 @@ struct PacketHeader
 class PacketSession : public Session
 {
 public:
+	// [S4] 패킷 크기 상한 (하드닝).
+	// header.size는 uint16이라 최대 65535이며 RecvBuffer 용량(64KB x 10)보다 작으므로
+	// "버퍼를 넘겨 세션을 영구 스톨시키는" 공격은 현재 타입 체계에서는 성립하지 않습니다.
+	// 그럼에도 상한을 두는 이유:
+	//   1) 악의적 클라이언트가 세션당 버퍼링을 강제로 부풀리는 것을 조기에 차단
+	//   2) 향후 헤더의 size 필드를 uint32로 넓히거나 BUFFER_COUNT를 줄일 경우 자동 방어
+	enum { MAX_PACKET_SIZE = 0x4000 }; // 16KB
+
+public:
 	PacketSession();
 	virtual ~PacketSession();
 

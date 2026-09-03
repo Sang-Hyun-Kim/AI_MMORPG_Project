@@ -43,7 +43,8 @@ THIRD_PARTY_INCLUDES_END
 
 // C++20: std::span을 활용하여 버퍼 오버플로우를 방지하는 모던 핸들러 시그니처
 using PacketHandlerFunc = std::function<bool(PacketSessionRef&, std::span<std::byte>)>;
-extern std::array<PacketHandlerFunc, UINT16_MAX> GPacketHandler;
+// [S2] 65535가 아니라 65536칸이어야 합니다. header.id(uint16)가 65535일 때 범위 밖 접근이 발생합니다.
+extern std::array<PacketHandlerFunc, UINT16_MAX + 1> GPacketHandler;
 
 // C++20: enum class를 통한 강력한 타입 체크
 enum class PacketID : uint16
@@ -86,7 +87,7 @@ class ClientPacketHandler
 public:
 	static void Init()
 	{
-		for (int32 i = 0; i < UINT16_MAX; i++)
+		for (int32 i = 0; i <= UINT16_MAX; i++) // [S2] 마지막 칸(65535)까지 초기화
 			GPacketHandler[i] = Handle_INVALID;
 		GPacketHandler[static_cast<uint16>(PacketID::PKT_S_LOGIN)] = [](PacketSessionRef& session, std::span<std::byte> buffer) { return HandlePacket<Protocol::S_LOGIN>(Handle_S_LOGIN, session, buffer); };
 		GPacketHandler[static_cast<uint16>(PacketID::PKT_S_ENTER_GAME)] = [](PacketSessionRef& session, std::span<std::byte> buffer) { return HandlePacket<Protocol::S_ENTER_GAME>(Handle_S_ENTER_GAME, session, buffer); };

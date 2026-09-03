@@ -15,7 +15,10 @@
 
 // C++20: std::span을 활용하여 버퍼 오버플로우를 방지하는 모던 핸들러 시그니처
 using PacketHandlerFunc = std::function<bool(PacketSessionRef&, std::span<std::byte>)>;
-extern std::array<PacketHandlerFunc, UINT16_MAX> GPacketHandler;
+// [S2] 배열 크기는 UINT16_MAX(=65535)가 아니라 UINT16_MAX + 1(=65536)이어야 합니다.
+// header.id는 uint16이라 65535까지 가질 수 있는데 크기가 65535면 유효 인덱스는 65534까지이므로,
+// id == 65535인 패킷 하나만으로 배열 범위 밖의 std::function을 호출하게 됩니다(미정의 동작).
+extern std::array<PacketHandlerFunc, UINT16_MAX + 1> GPacketHandler;
 
 // C++20: enum class를 통한 강력한 타입 체크
 enum class PacketID : uint16
@@ -56,7 +59,8 @@ class ServerPacketHandler
 public:
 	static void Init()
 	{
-		for (int32 i = 0; i < UINT16_MAX; i++)
+		// [S2] 마지막 칸(인덱스 65535)까지 빠짐없이 초기화합니다.
+		for (int32 i = 0; i <= UINT16_MAX; i++)
 			GPacketHandler[i] = Handle_INVALID;
 		GPacketHandler[static_cast<uint16>(PacketID::PKT_C_LOGIN)] = [](PacketSessionRef& session, std::span<std::byte> buffer) { return HandlePacket<Protocol::C_LOGIN>(Handle_C_LOGIN, session, buffer); };
 		GPacketHandler[static_cast<uint16>(PacketID::PKT_C_ENTER_GAME)] = [](PacketSessionRef& session, std::span<std::byte> buffer) { return HandlePacket<Protocol::C_ENTER_GAME>(Handle_C_ENTER_GAME, session, buffer); };
@@ -89,8 +93,19 @@ private:
 	static bool HandlePacket(ProcessFunc func, PacketSessionRef& session, std::span<std::byte> buffer)
 	{
 		PacketType pkt;
-		// C++20 std::span을 활용한 안전한 길이 계산
-		if (pkt.ParseFromArray(buffer.data() + sizeof(PacketHeader), static_cast<int32>(buffer.size()) - sizeof(PacketHeader)) == false)
+
+		// [S3] 길이 계산 언더플로우 방어.
+		// sizeof()는 size_t(부호 없음)이므로 int32와 섞어 빼면 int32가 size_t로 승격되어,
+		// buffer.size()가 4보다 작을 때 뺄셈이 언더플로우하여 거대한 값이 됩니다.
+		// 그 값이 int 매개변수로 좁혀지면서 비정상 길이가 Protobuf에 전달되어 버퍼 밖을 읽습니다.
+		// PacketSession::OnRecv의 [S1] 하한 검증이 들어가면 여기까지 오지 않지만,
+		// 파싱 진입점 자체에도 방어를 두어 이중으로 막습니다.
+		const size_t bufferSize = buffer.size();
+		if (bufferSize < sizeof(PacketHeader))
+			return false;
+
+		const int32 payloadSize = static_cast<int32>(bufferSize - sizeof(PacketHeader));
+		if (pkt.ParseFromArray(buffer.data() + sizeof(PacketHeader), payloadSize) == false)
 			return false;
 
 		return func(session, pkt);

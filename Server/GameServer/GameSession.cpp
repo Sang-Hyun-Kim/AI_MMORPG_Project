@@ -34,12 +34,15 @@ JobTask GameSession::LoadPlayerTask(uint64 accountId, uint64 playerId) {
   co_await DBAwaitable(dbJob, nullptr);
 
   PlayerRef player = std::make_shared<Player>();
+  // [O1] 상태 단일화: ID/이름/좌표는 GameObject::_info 한 곳에만 기록합니다.
+  // 과거에는 _info와 _playerInfo 두 사본에 나눠 기록해서,
+  // S_SPAWN(=_info)에는 이름이 비고 좌표가 원점이었고,
+  // GetSaveData()(=_playerInfo)는 이동 결과를 보지 못해 DB에 (0,0,0)만 저장했습니다.
   player->SetObjectId(playerId);
-  player->GetPlayerInfo()->mutable_objectinfo()->set_objectid(playerId);
-  player->GetPlayerInfo()->mutable_objectinfo()->set_name(loadedData->name);
-  player->GetPlayerInfo()->mutable_objectinfo()->mutable_posinfo()->set_x(loadedData->x);
-  player->GetPlayerInfo()->mutable_objectinfo()->mutable_posinfo()->set_y(loadedData->y);
-  player->GetPlayerInfo()->mutable_objectinfo()->mutable_posinfo()->set_z(loadedData->z);
+  player->GetObjectInfo()->set_name(loadedData->name);
+  player->GetPosInfo()->set_x(loadedData->x);
+  player->GetPosInfo()->set_y(loadedData->y);
+  player->GetPosInfo()->set_z(loadedData->z);
   player->SetGold(loadedData->gold);
   player->SetSession(session);
 
@@ -48,7 +51,7 @@ JobTask GameSession::LoadPlayerTask(uint64 accountId, uint64 playerId) {
   // 1. [핵심] 클라이언트에게 S_ENTER_GAME을 "가장 먼저" 전송! (MyPlayerId 세팅 확정)
   Protocol::S_ENTER_GAME enterPkt;
   enterPkt.set_success(true);
-  enterPkt.mutable_player()->CopyFrom(*player->GetPlayerInfo());
+  enterPkt.mutable_player()->CopyFrom(player->MakePlayerInfo());
   session->Send(ServerPacketHandler::MakeSendBuffer(enterPkt));
 
   std::cout << "==================================================" << std::endl;

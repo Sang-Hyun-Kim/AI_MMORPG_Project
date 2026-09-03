@@ -105,7 +105,8 @@ Docs/QA_TestPlan_*.md
 
 # Environment Variables
 Infra/.env
-
+Docs/AICommunicationDocs/*.md
+Backup/*
 # Plans, Deployment & Handover Docs (로컬 전용 - 원격 미포함)
 Docs/M9_Implementation_Plan.md
 Docs/M9_Network_Refactoring_Plan.md
@@ -118,3 +119,6 @@ Docs/Prompt_Claude_Phase4*.md
 
 # Server Configurations
 Server/GameServer/Config.json
+
+# Phase 4 배포 번들 (생성물)
+DeployBundle/

@@ -4,7 +4,7 @@
 #include "GameRoom.h"
 #include "RedisManager.h"
 
-std::array<PacketHandlerFunc, UINT16_MAX> GPacketHandler;
+std::array<PacketHandlerFunc, UINT16_MAX + 1> GPacketHandler; // [S2] 65536칸
 
 bool Handle_INVALID(PacketSessionRef& session, std::span<std::byte> buffer)
 {

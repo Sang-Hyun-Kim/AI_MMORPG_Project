@@ -202,6 +202,10 @@ void Session::ProcessConnect()
 {
 	_connectEvent.owner = nullptr; // RELEASE_REF
 	_connected.store(true);
+
+	// [N4] 아웃바운드(ClientService/DummyClient) 소켓에도 동일하게 적용
+	SocketUtils::SetTcpNoDelay(_socket, true);
+
 	UpdateActiveTick();
 	GetService()->AddSession(GetSessionRef());
 	OnConnected();
@@ -299,6 +303,28 @@ int32 PacketSession::OnRecv(std::span<std::byte> buffer)
 			break;
 
 		PacketHeader header = *(reinterpret_cast<PacketHeader*>(&buffer[processLen]));
+
+		// ---------------------------------------------------------------------
+		// [S1] 하한 검증 — 원격 DoS 차단 (최중대)
+		// header.size가 헤더 크기(4)보다 작으면 processLen이 전진하지 않아
+		// while(true)가 무한 루프에 빠지고, 이 IOCP 워커 스레드가 영구 점유됩니다.
+		// size == 0인 4바이트 패킷 하나로 원격에서 유발 가능하며,
+		// 워커가 5개뿐이므로 5회 반복하면 서버 전체가 정지합니다.
+		// 리슨 주소가 0.0.0.0으로 바뀌어 외부망에 노출되므로(=[B1]) 반드시 필요합니다.
+		// ---------------------------------------------------------------------
+		if (header.size < sizeof(PacketHeader))
+		{
+			Disconnect(L"INVALID_PACKET_SIZE_UNDERFLOW");
+			return len; // 남은 버퍼를 전부 소비 처리해 재진입을 막습니다.
+		}
+
+		// [S4] 상한 검증 (하드닝) — 상세 사유는 Session.h의 MAX_PACKET_SIZE 주석 참고
+		if (header.size > PacketSession::MAX_PACKET_SIZE)
+		{
+			Disconnect(L"INVALID_PACKET_SIZE_OVERFLOW");
+			return len;
+		}
+
 		if (dataSize < header.size)
 			break;
 

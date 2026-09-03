@@ -5,6 +5,10 @@
 // 서버 설정 정보 (포트 번호, 최대 접속 세션 수 등)
 struct ServerConfig
 {
+    // 리슨(bind)할 로컬 인터페이스 주소.
+    // "0.0.0.0"(INADDR_ANY)이면 모든 NIC에서 수신하므로 외부망(AWS EC2 Elastic IP) 접속이 가능합니다.
+    // "127.0.0.1"로 두면 루프백에만 바인딩되어 같은 PC에서만 접속됩니다.
+    std::string bindAddress = "0.0.0.0";
     int32 port = 7777;          // 게임 서버가 리슨할 포트
     int32 maxSession = 1000;    // 최대 동시 접속 허용 세션 수
 };
