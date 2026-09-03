@@ -79,7 +79,11 @@ if exist "%SRC_DC%\DummyClient.exe" (
 
 REM DB 스키마
 if exist "%SCRIPT_DIR%schema.sql"  copy /Y "%SCRIPT_DIR%schema.sql"  "%BUNDLE%\Sql\" > nul
-if exist "%SCRIPT_DIR%mailbox.sql" copy /Y "%SCRIPT_DIR%mailbox.sql" "%BUNDLE%\Sql\" > nul
+if exist "%SCRIPT_DIR%seed_accounts.sql" copy /Y "%SCRIPT_DIR%seed_accounts.sql" "%BUNDLE%\Sql\" > nul
+rem [2026-09-04] mailbox.sql 은 더 이상 번들에 넣지 않습니다.
+rem   과거 이 파일은 DROP TABLE IF EXISTS Player 로 시작해, schema.sql 뒤에 임포트하면
+rem   방금 만든 Player 테이블을 폐기하고 재생성했습니다(운영 중 재임포트 시 데이터 전소).
+rem   Player/Mailbox DDL 은 schema.sql 로 통합되었습니다. [F4]
 
 REM ---------------------------------------------------------------- 4) 안내문
 echo [4/5] 배포 안내문을 생성합니다...
@@ -94,7 +98,8 @@ echo 1. 이 폴더 전체를 EC2로 복사합니다 ^(RDP 드래그 앤 드롭 �
 echo 2. **Microsoft Visual C++ 재배포 가능 패키지 ^(x64^)** 를 EC2에 설치합니다.
 echo    https://aka.ms/vs/17/release/vc_redist.x64.exe
 echo    ^-^> 이것이 없으면 GameServer.exe 가 VCRUNTIME140.dll 오류로 즉시 종료됩니다.
-echo 3. MySQL^(3307^) 과 Redis^(6379^) 를 기동하고 Sql\schema.sql, Sql\mailbox.sql 을 임포트합니다.
+echo 3. MySQL^(3307^) 과 Redis^(6379^) 를 기동하고 Sql\schema.sql 을 임포트합니다.
+echo    ^(WebBackend 최초 기동으로 Account 테이블이 생성된 뒤 Sql\seed_accounts.sql 을 임포트하십시오^)
 echo 4. Config.json 을 환경에 맞게 수정합니다.
 echo    - Server.BindAddress : 0.0.0.0 유지 ^(외부 접속 허용^)
 echo    - Database.MySQL     : EC2 내 DB 접속 정보
