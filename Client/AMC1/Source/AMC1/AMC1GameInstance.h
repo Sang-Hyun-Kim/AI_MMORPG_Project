@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
+#include "TimerManager.h"
 #include "AMC1GameInstance.generated.h"
 
 class FSocket;
@@ -20,8 +21,10 @@ public:
 	void DisconnectFromServer();
 	
 	void SendPacket(TSharedPtr<class SendBuffer> SendBuf);
+	void SendPing();
 
 private:
 	FSocket* Socket;
 	TSharedPtr<FNetworkWorker> NetworkWorker;
+	FTimerHandle PingTimerHandle;
 };

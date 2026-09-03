@@ -14,19 +14,22 @@ bool Handle_C_LOGIN(PacketSessionRef& session, Protocol::C_LOGIN& pkt)
 {
 	std::wcout << L"[ServerPacketHandler] C_LOGIN Received! Ticket: " << pkt.ticket().c_str() << std::endl;
 
+	std::string ticket = pkt.ticket();
+	std::string lowerTicket = ticket;
+	std::transform(lowerTicket.begin(), lowerTicket.end(), lowerTicket.begin(), ::tolower);
+
 	if (GRedisManager && GRedisManager->GetRedis())
 	{
-		std::string ticket = pkt.ticket();
 		std::string key = "Ticket:User:" + ticket;
 
-		// 포트폴리오 테스트용 백도어: dummy_ 로 시작하면 임시 삽입
-		if (ticket.starts_with("dummy_"))
+		// 포트폴리오 테스트용 백도어: dummy 로 시작하면 (대소문자 무관 DummyTicket, dummy_ 모두) 임시 삽입
+		if (lowerTicket.starts_with("dummy"))
 		{
 			GRedisManager->GetRedis()->set(key, "1");
+			std::wcout << L"[ServerPacketHandler] Test Ticket Auto-Registered in Redis: " << ticket.c_str() << std::endl;
 		}
 
-		// Lua Script 대신 간편하게 Transaction(GET+DEL)을 사용하는 예시 (redis-plus-plus의 pipeline/transaction 활용 또는 단순 get/del)
-		// 완벽한 원자성을 위해서는 Lua Script가 좋으나, 여기서는 포트폴리오 시연용으로 간략화
+		// Lua Script 대신 간편하게 Transaction(GET+DEL)을 사용하는 예시
 		auto val = GRedisManager->GetRedis()->get(key);
 		if (val)
 		{
@@ -36,12 +39,13 @@ bool Handle_C_LOGIN(PacketSessionRef& session, Protocol::C_LOGIN& pkt)
 			loginPkt.set_success(true);
 			SendBufferRef sendBuffer = ServerPacketHandler::MakeSendBuffer(loginPkt);
 			session->Send(sendBuffer);
+			std::wcout << L"[ServerPacketHandler] Login Success! Ticket: " << ticket.c_str() << std::endl;
 			return true;
 		}
 		else
 		{
 			// 검증 실패
-			std::wcout << L"Login Failed: Invalid Ticket" << std::endl;
+			std::wcout << L"Login Failed: Invalid Ticket (" << ticket.c_str() << L")" << std::endl;
 			session->Disconnect(L"Invalid Ticket");
 			return false;
 		}
@@ -59,6 +63,14 @@ bool Handle_C_LOGIN(PacketSessionRef& session, Protocol::C_LOGIN& pkt)
 }
 bool Handle_C_ENTER_GAME(PacketSessionRef& session, Protocol::C_ENTER_GAME& pkt)
 {
+	GameSessionRef gameSession = std::static_pointer_cast<GameSession>(session);
+	
+	static std::atomic<uint64> idGenerator = 1;
+	uint64 tempPlayerId = idGenerator.fetch_add(1);
+
+	// C_ENTER_GAME을 수신했을 때 비로소 플레이어를 생성/로드하고,
+	// S_ENTER_GAME 선발송 후 GameRoom::Enter(S_SPAWN)를 실행!
+	gameSession->LoadPlayerTask(1, tempPlayerId);
 	return true;
 }
 bool Handle_C_LEAVE_GAME(PacketSessionRef& session, Protocol::C_LEAVE_GAME& pkt)

@@ -67,8 +67,8 @@ void Service::SweepSessions()
 	for (const auto& session : _sessions)
 	{
 		uint64_t lastTick = session->GetLastActiveTick();
-		// 15초(15000ms) 이상 무응답인 세션을 찾는다 (0인 경우는 아직 연결 후 Recv나 Connect가 안된 매우 짧은 순간이거나 버그일 수 있으므로 제외할지 고려. 여기서는 단순화)
-		if (lastTick > 0 && currentTick > lastTick + 15000)
+		// 60초(60000ms) 이상 무응답인 세션을 찾는다 (개발/디버깅 세션 보호)
+		if (lastTick > 0 && currentTick > lastTick + 60000)
 		{
 			zombieSessions.push_back(session);
 		}

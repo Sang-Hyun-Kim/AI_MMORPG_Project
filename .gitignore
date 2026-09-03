@@ -106,8 +106,15 @@ Docs/QA_TestPlan_*.md
 # Environment Variables
 Infra/.env
 
-# M9 Implementation Plan (로컬 전용 - 원격 미포함)
+# Plans, Deployment & Handover Docs (로컬 전용 - 원격 미포함)
 Docs/M9_Implementation_Plan.md
+Docs/M9_Network_Refactoring_Plan.md
+Docs/M9_Phase4_AWS_Deployment_Plan.md
+Docs/*Implementation_Plan*.md
+Docs/*ImplePlan*.md
+*implementation_plan.md
+*0903*ImplePlan*
+Docs/Prompt_Claude_Phase4*.md
 
 # Server Configurations
 Server/GameServer/Config.json

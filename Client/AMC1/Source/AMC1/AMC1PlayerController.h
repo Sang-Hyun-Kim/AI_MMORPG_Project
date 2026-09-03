@@ -14,7 +14,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	
 	UFUNCTION(BlueprintCallable, Category="Network")
-	void SendMovePacket(FVector Location, float Yaw);
+	void SendMovePacket();
 
 	UFUNCTION(BlueprintCallable, Category="Network")
 	void SendAttackPacket(int32 TargetId);

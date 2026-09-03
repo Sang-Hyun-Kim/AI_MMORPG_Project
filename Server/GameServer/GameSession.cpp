@@ -8,14 +8,7 @@ GameSession::~GameSession() {}
 
 void GameSession::OnConnected() {
   std::wcout << L"GameSession Connected" << std::endl;
-
-  // 더미 접속 시 임시 ID 발급 (실제로는 로그인 패킷에서 계정 ID를 받아서
-  // 처리해야 함)
-  static std::atomic<uint64> idGenerator = 1;
-  uint64 tempPlayerId = idGenerator.fetch_add(1);
-
-  // DB에서 데이터를 비동기로 로드하고 방에 입장시키는 코루틴 호출
-  LoadPlayerTask(1, tempPlayerId);
+  // OnConnected에서는 방 입장(Enter)을 하지 않음! C_ENTER_GAME 패킷 수신 시 정식 입장!
 }
 
 JobTask GameSession::LoadPlayerTask(uint64 accountId, uint64 playerId) {
@@ -42,6 +35,7 @@ JobTask GameSession::LoadPlayerTask(uint64 accountId, uint64 playerId) {
 
   PlayerRef player = std::make_shared<Player>();
   player->SetObjectId(playerId);
+  player->GetPlayerInfo()->mutable_objectinfo()->set_objectid(playerId);
   player->GetPlayerInfo()->mutable_objectinfo()->set_name(loadedData->name);
   player->GetPlayerInfo()->mutable_objectinfo()->mutable_posinfo()->set_x(loadedData->x);
   player->GetPlayerInfo()->mutable_objectinfo()->mutable_posinfo()->set_y(loadedData->y);
@@ -51,6 +45,17 @@ JobTask GameSession::LoadPlayerTask(uint64 accountId, uint64 playerId) {
 
   session->SetPlayer(player);
 
+  // 1. [핵심] 클라이언트에게 S_ENTER_GAME을 "가장 먼저" 전송! (MyPlayerId 세팅 확정)
+  Protocol::S_ENTER_GAME enterPkt;
+  enterPkt.set_success(true);
+  enterPkt.mutable_player()->CopyFrom(*player->GetPlayerInfo());
+  session->Send(ServerPacketHandler::MakeSendBuffer(enterPkt));
+
+  std::cout << "==================================================" << std::endl;
+  std::cout << "[Server] S_ENTER_GAME Sent! PlayerId: " << playerId << std::endl;
+  std::cout << "==================================================" << std::endl;
+
+  // 2. [핵심] 그 후 GameRoom에 입장시키며 S_SPAWN 브로드캐스트!
   GameRoomRef room = GGameRoomManager->GetRoom(1);
   if (room != nullptr) {
     room->DoAsync(&GameRoom::Enter,

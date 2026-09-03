@@ -11,7 +11,12 @@ void UAMC1GameInstance::Init()
 {
 	Super::Init();
 
+	// 언리얼 내장 데디케이티드 서버 인스턴스는 C++ 소켓 접속 제외 (중복 유령 세션 방지)
+	if (IsRunningDedicatedServer())
+		return;
+
 	ClientPacketHandler::Init();
+	ClientPacketHandler::GGameInstance = this;
 
 	ConnectToServer();
 }
@@ -19,6 +24,9 @@ void UAMC1GameInstance::Init()
 void UAMC1GameInstance::Shutdown()
 {
 	DisconnectFromServer();
+
+	// 댕글링 포인터 방지를 위한 전역 약참조 초기화
+	ClientPacketHandler::GGameInstance = nullptr;
 
 	Super::Shutdown();
 }
@@ -43,12 +51,20 @@ void UAMC1GameInstance::ConnectToServer()
 		UE_LOG(LogTemp, Log, TEXT("[UAMC1GameInstance] Connected to Server Successfully!"));
 		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("[Network] Connected to Server!"));
 
-		// 수신 스레드 구동
-		NetworkWorker = MakeShared<FNetworkWorker>(Socket);
+		// 수신 스레드 구동 (GameInstance 포인터 전달)
+		NetworkWorker = MakeShared<FNetworkWorker>(Socket, this);
 
-		// 임시 C_LOGIN 전송 테스트
+		// 5초 주기 Heartbeat PING 발송 타이머 등록 (좀비 세션 강퇴 방지)
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().SetTimer(PingTimerHandle, this, &UAMC1GameInstance::SendPing, 5.0f, true);
+		}
+
+		// 임시 C_LOGIN 전송 테스트 (멀티클라이언트 테스트를 위해 랜덤 티켓 발급)
+		int32 RandomSuffix = FMath::RandRange(1, 100);
+		FString TicketStr = FString::Printf(TEXT("DummyTicket_%d"), RandomSuffix);
 		Protocol::C_LOGIN LoginPkt;
-		LoginPkt.set_ticket("DummyTicket"); // 더미 티켓
+		LoginPkt.set_ticket(TCHAR_TO_UTF8(*TicketStr)); 
 
 		SendBufferRef SendBuf = ClientPacketHandler::MakeSendBuffer(LoginPkt);
 		if (SendBuf.IsValid())
@@ -67,6 +83,11 @@ void UAMC1GameInstance::ConnectToServer()
 
 void UAMC1GameInstance::DisconnectFromServer()
 {
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(PingTimerHandle);
+	}
+
 	if (NetworkWorker.IsValid())
 	{
 		NetworkWorker->Destroy();
@@ -89,4 +110,11 @@ void UAMC1GameInstance::SendPacket(TSharedPtr<class SendBuffer> SendBuf)
 		int32 BytesSent = 0;
 		Socket->Send(SendBuf->Buffer().GetData(), SendBuf->Buffer().Num(), BytesSent);
 	}
+}
+
+void UAMC1GameInstance::SendPing()
+{
+	Protocol::C_PING PingPkt;
+	SendBufferRef SendBuf = ClientPacketHandler::MakeSendBuffer(PingPkt);
+	SendPacket(SendBuf);
 }

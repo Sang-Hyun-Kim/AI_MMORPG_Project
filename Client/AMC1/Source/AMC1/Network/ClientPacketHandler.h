@@ -81,6 +81,8 @@ bool Handle_S_PONG(PacketSessionRef& session, Protocol::S_PONG& pkt);
 bool Handle_S_ATTACK(PacketSessionRef& session, Protocol::S_ATTACK& pkt);
 bool Handle_S_STATUS_CHANGE(PacketSessionRef& session, Protocol::S_STATUS_CHANGE& pkt);
 
+class UAMC1GameInstance;
+
 class ClientPacketHandler
 {
 public:
@@ -113,6 +115,13 @@ public:
 	static SendBufferRef MakeSendBuffer(Protocol::C_PING& pkt) { return MakeSendBuffer(pkt, static_cast<uint16>(PacketID::PKT_C_PING)); }
 	static SendBufferRef MakeSendBuffer(Protocol::C_ATTACK& pkt) { return MakeSendBuffer(pkt, static_cast<uint16>(PacketID::PKT_C_ATTACK)); }
 	static SendBufferRef MakeSendBuffer(Protocol::C_CHECK_MAILBOX& pkt) { return MakeSendBuffer(pkt, static_cast<uint16>(PacketID::PKT_C_CHECK_MAILBOX)); }
+
+	// ★ TWeakObjectPtr로 전환: GC 안전 + Dangling 방지
+	// [아키텍처 경고] 이 전역 변수는 ClientPacketHandler와 GameInstance 간의
+	// 양방향 의존성(Circular Dependency)을 만듭니다. 현재 프로젝트 규모에서는
+	// 실용적으로 수용하지만, 추후 DI(Dependency Injection) 패턴으로
+	// 리팩토링해야 할 대상입니다. (목표: 9/5 이후)
+	static TWeakObjectPtr<UAMC1GameInstance> GGameInstance;
 
 private:
 	template<typename PacketType, typename ProcessFunc>
