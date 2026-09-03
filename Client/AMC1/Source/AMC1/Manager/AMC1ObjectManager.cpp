@@ -4,6 +4,10 @@
 #include "Engine/Engine.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Components/CapsuleComponent.h"
+// [2026-09-04] F10 좌표 복원에 필요한 헤더
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/Pawn.h"
+#include "TimerManager.h"
 
 void UAMC1ObjectManager::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -13,8 +17,108 @@ void UAMC1ObjectManager::Initialize(FSubsystemCollectionBase& Collection)
 
 void UAMC1ObjectManager::Deinitialize()
 {
+	// 보류 타이머가 남아 있으면 정리합니다. (월드가 사라진 뒤 콜백이 도는 것을 방지)
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(PendingTransformTimer);
+	}
+	bHasPendingTransform = false;
+
 	ProxyCharacters.Empty();
 	Super::Deinitialize();
+}
+
+/*
+ * ApplyMyPlayerTransform — 결함 F10 대응
+ * 서버가 S_ENTER_GAME에 실어 보낸 "DB에 저장돼 있던 마지막 좌표"를 내 폰에 적용합니다.
+ * 자세한 경위는 AMC1ObjectManager.h의 선언부 주석을 참고하세요.
+ */
+void UAMC1ObjectManager::ApplyMyPlayerTransform(const FVector& Location, float Yaw)
+{
+	if (ApplyTransformToLocalPawn(Location, Yaw))
+		return;
+
+	/*
+	 * 폰이 아직 없습니다(레벨 로드/Possess 이전에 패킷이 도착한 경우).
+	 * 값을 보류해 두고 짧은 주기로 재시도합니다. 적용에 성공하면 타이머를 해제합니다.
+	 * 그냥 포기하면 왕복이 타이밍에 따라 보였다 안 보였다 하게 됩니다.
+	 */
+	bHasPendingTransform = true;
+	PendingLocation = Location;
+	PendingYaw = Yaw;
+
+	UE_LOG(LogTemp, Log,
+		TEXT("[UAMC1ObjectManager] Local pawn not ready. Pending spawn transform (%s, Yaw=%.1f)."),
+		*Location.ToString(), Yaw);
+
+	if (UWorld* World = GetWorld())
+	{
+		if (!World->GetTimerManager().IsTimerActive(PendingTransformTimer))
+		{
+			World->GetTimerManager().SetTimer(
+				PendingTransformTimer, this,
+				&UAMC1ObjectManager::TryFlushPendingTransform,
+				0.1f, /*bLoop=*/true);
+		}
+	}
+}
+
+void UAMC1ObjectManager::TryFlushPendingTransform()
+{
+	if (!bHasPendingTransform)
+	{
+		if (UWorld* World = GetWorld())
+			World->GetTimerManager().ClearTimer(PendingTransformTimer);
+		return;
+	}
+
+	if (ApplyTransformToLocalPawn(PendingLocation, PendingYaw))
+	{
+		bHasPendingTransform = false;
+		if (UWorld* World = GetWorld())
+			World->GetTimerManager().ClearTimer(PendingTransformTimer);
+	}
+}
+
+bool UAMC1ObjectManager::ApplyTransformToLocalPawn(const FVector& Location, float Yaw)
+{
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+		return false;
+
+	APlayerController* PC = World->GetFirstPlayerController();
+	if (PC == nullptr)
+		return false;
+
+	APawn* Pawn = PC->GetPawn();
+	if (Pawn == nullptr)
+		return false;
+
+	/*
+	 * TeleportTo가 아니라 SetActorLocation(+ Sweep=false)을 씁니다.
+	 * 저장된 좌표가 지오메트리와 겹칠 경우 TeleportTo는 실패하거나 위치를 보정해
+	 * "DB에 있던 그 자리"가 아니게 될 수 있는데, 왕복 증명에서는 값이 그대로
+	 * 재현되는 것이 중요합니다.
+	 */
+	Pawn->SetActorLocation(Location, /*bSweep=*/false, nullptr, ETeleportType::TeleportPhysics);
+
+	// 회전은 컨트롤러가 소유하므로 컨트롤 로테이션도 함께 맞춰야 카메라가 튀지 않습니다.
+	FRotator NewRotation(0.f, Yaw, 0.f);
+	Pawn->SetActorRotation(NewRotation);
+	PC->SetControlRotation(NewRotation);
+
+	UE_LOG(LogTemp, Log,
+		TEXT("[UAMC1ObjectManager] Applied saved transform to local pawn: %s (Yaw=%.1f)"),
+		*Location.ToString(), Yaw);
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(3, 10.f, FColor::Magenta,
+			FString::Printf(TEXT("★ [Restore] Loaded position from DB: %.0f, %.0f, %.0f ★"),
+				Location.X, Location.Y, Location.Z));
+	}
+
+	return true;
 }
 
 void UAMC1ObjectManager::SpawnProxy(uint64 ObjectId, FVector Location, float Yaw)

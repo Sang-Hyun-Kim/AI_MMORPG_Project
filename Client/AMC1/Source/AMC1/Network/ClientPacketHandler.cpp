@@ -50,10 +50,35 @@ bool Handle_S_ENTER_GAME(PacketSessionRef& session, Protocol::S_ENTER_GAME& pkt)
 				ObjManager->SetMyPlayerId(MyId);
 				UE_LOG(LogTemp, Log, TEXT("[PacketHandler] My Player ID set to %llu"), MyId);
 
+				/*
+				 * [2026-09-04] 저장된 좌표 복원 — 결함 F10
+				 *
+				 * 변경 전: 이 핸들러는 objectid()만 꺼내 쓰고 **좌표를 읽지도 않았습니다.**
+				 *   서버는 S_ENTER_GAME에 MakePlayerInfo()로 조립한 좌표(=DB에서 읽어온
+				 *   마지막 위치)를 실어 보내고 있었는데, 클라이언트가 그것을 버렸습니다.
+				 *   그래서 내 캐릭터는 언제나 레벨의 PlayerStart에서 시작했고,
+				 *   "이동해도 매번 같은 자리에서 스폰"으로 보였습니다.
+				 *   남의 캐릭터를 그리는 Handle_S_SPAWN은 좌표를 제대로 꺼내 쓰고 있었으므로,
+				 *   프록시 경로만 구현되고 본인 경로가 빠진 비대칭이었습니다.
+				 *
+				 * 변경 후: 받은 좌표를 내 폰에 적용합니다.
+				 *   폰이 아직 없으면(레벨 로드/Possess 이전 도착) ObjectManager가 값을
+				 *   보류했다가 준비되는 즉시 적용합니다.
+				 *
+				 * ⚠️ 스레드 안전성: 이 핸들러는 FNetworkWorker::Run()에서
+				 *   AsyncTask(ENamedThreads::GameThread, ...)로 디스패치된 뒤 실행되므로
+				 *   **이미 게임 스레드 위**입니다. 그래서 여기서 액터를 조작해도
+				 *   check(IsInGameThread()) assertion에 걸리지 않습니다.
+				 *   그 디스패치 구조를 제거하면 이 코드가 즉시 크래시합니다.
+				 */
+				const Protocol::PositionInfo& Pos = pkt.player().objectinfo().posinfo();
+				ObjManager->ApplyMyPlayerTransform(
+					FVector(Pos.x(), Pos.y(), Pos.z()), Pos.yaw());
+
 				// Key=1 고정 라인으로 10초간 청색 입장 성공 메시지 표시
 				if (GEngine)
 				{
-					GEngine->AddOnScreenDebugMessage(1, 10.f, FColor::Cyan, 
+					GEngine->AddOnScreenDebugMessage(1, 10.f, FColor::Cyan,
 						FString::Printf(TEXT("★ [Packet] S_ENTER_GAME Connected! MyPlayerId: %llu ★"), MyId));
 				}
 			}
