@@ -48,6 +48,8 @@ bool DBConnection::Execute(const std::string& query)
 {
     if (_conn == nullptr) return false;
 
+    // ⚠️ SELECT를 넘기지 마십시오. 결과 셋이 소비되지 않아 커넥션이 오염됩니다. [F8]
+    //    SELECT는 ExecuteQuery()를 사용하십시오. (상세는 DBConnectionPool.h 주석 참조)
     int ret = mysql_query(_conn, query.c_str());
     if (ret != 0)
     {
@@ -55,6 +57,69 @@ bool DBConnection::Execute(const std::string& query)
         return false;
     }
     return true;
+}
+
+/*
+ * ExecuteQuery
+ * SELECT 실행 후 결과 셋을 즉시 store하여 DBResult에 담아 반환합니다.
+ * DBResult 소멸자가 mysql_free_result를 보장하므로, 호출자가 어느 경로로
+ * 빠져나가더라도(조기 return, 예외) 커넥션이 오염되지 않습니다. [F8]
+ */
+DBResult DBConnection::ExecuteQuery(const std::string& query)
+{
+    if (_conn == nullptr)
+        return DBResult(nullptr);
+
+    if (mysql_query(_conn, query.c_str()) != 0)
+    {
+        std::cerr << "MySQL Query Error: " << mysql_error(_conn) << " (Query: " << query << ")" << std::endl;
+        return DBResult(nullptr);
+    }
+
+    // store_result는 결과 셋을 클라이언트 메모리로 모두 가져옵니다.
+    // 이 호출을 빠뜨리면 결과가 커넥션에 남아 다음 쿼리가 오류 2014로 실패합니다.
+    MYSQL_RES* res = mysql_store_result(_conn);
+    if (res == nullptr)
+    {
+        // 결과 셋이 없는 정상 케이스(UPDATE 등)와 실제 오류를 구분합니다.
+        if (mysql_field_count(_conn) != 0)
+            std::cerr << "MySQL StoreResult Error: " << mysql_error(_conn) << std::endl;
+        return DBResult(nullptr);
+    }
+
+    return DBResult(res);
+}
+
+uint64 DBConnection::GetAffectedRows() const
+{
+    if (_conn == nullptr) return 0;
+
+    // mysql_affected_rows는 오류 시 (my_ulonglong)-1을 반환합니다.
+    my_ulonglong rows = mysql_affected_rows(_conn);
+    if (rows == static_cast<my_ulonglong>(-1))
+        return 0;
+
+    return static_cast<uint64>(rows);
+}
+
+uint64 DBConnection::GetLastInsertId() const
+{
+    if (_conn == nullptr) return 0;
+    return static_cast<uint64>(mysql_insert_id(_conn));
+}
+
+std::string DBConnection::EscapeString(const std::string& raw) const
+{
+    if (_conn == nullptr) return std::string();
+
+    // 최악의 경우 모든 문자가 이스케이프되어 2배가 되므로 2n+1 확보
+    std::string out;
+    out.resize(raw.size() * 2 + 1);
+
+    unsigned long len = mysql_real_escape_string(_conn, out.data(), raw.c_str(),
+                                                 static_cast<unsigned long>(raw.size()));
+    out.resize(len);
+    return out;
 }
 
 /*----------------

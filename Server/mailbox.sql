@@ -1,24 +1,30 @@
-DROP TABLE IF EXISTS `Player`;
-CREATE TABLE `Player` (
-  `PlayerId` bigint(20) NOT NULL AUTO_INCREMENT,
-  `Name` varchar(50) NOT NULL,
-  `Level` int(11) NOT NULL DEFAULT '1',
-  `Exp` int(11) NOT NULL DEFAULT '0',
-  `Hp` int(11) NOT NULL DEFAULT '100',
-  `ClassId` int(11) NOT NULL DEFAULT '0',
-  `Gold` int(11) NOT NULL DEFAULT '0',
-  `PosX` float NOT NULL DEFAULT '0',
-  `PosY` float NOT NULL DEFAULT '0',
-  `PosZ` float NOT NULL DEFAULT '0',
-  `Yaw` float NOT NULL DEFAULT '0',
-  PRIMARY KEY (`PlayerId`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- ============================================================================
+--  [DEPRECATED / 2026-09-04] 이 파일은 더 이상 테이블을 만들지 않습니다.
+-- ============================================================================
+--  과거 이 파일은 다음으로 시작했습니다.
+--
+--      DROP TABLE IF EXISTS `Player`;
+--      CREATE TABLE `Player` ( ... );   -- schema.sql과 거의 동일한 정의를 재생성
+--      DROP TABLE IF EXISTS `Mailbox`;
+--      CREATE TABLE `Mailbox` ( ... );
+--      INSERT IGNORE INTO Player (PlayerId, Name) VALUES (0, 'DummyPlayer');
+--
+--  [문제 — 결함 ID F4]
+--    schema.sql → mailbox.sql 순으로 임포트하면 앞서 만든 `Player`가 말없이
+--    폐기되고 재생성되었습니다. 빈 DB에 처음 넣을 때는 증상이 없지만,
+--    운영 중 재임포트하면 **플레이어 데이터가 전부 사라집니다.**
+--    또한 두 파일이 같은 테이블을 서로 다르게 정의해 정본이 모호했습니다. [F2]
+--
+--  [조치]
+--    `Player` / `Mailbox` DDL을 모두 schema.sql로 통합했습니다.
+--    이 파일은 과거 임포트 스크립트·문서가 참조하고 있을 수 있어 삭제하지 않고
+--    빈 파일로 남깁니다. (프로젝트 규칙: 코드/자산 임의 삭제 금지)
+--
+--  [지금 해야 할 일]
+--    → `schema.sql` 하나만 임포트하십시오. 이 파일은 임포트할 필요가 없습니다.
+--    → DummyPlayer(PlayerId=0) 시드 행도 더 이상 넣지 않습니다.
+--      PlayerId는 이제 C# 백엔드가 발급하는 실제 캐릭터 ID이며,
+--      존재하지 않는 행은 C++ LoadPlayerTask가 INSERT로 생성합니다.
+-- ============================================================================
 
-DROP TABLE IF EXISTS `Mailbox`;
-CREATE TABLE `Mailbox` (
-  `MailId` bigint(20) NOT NULL AUTO_INCREMENT,
-  `PlayerId` bigint(20) NOT NULL,
-  PRIMARY KEY (`MailId`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-INSERT IGNORE INTO Player (PlayerId, Name) VALUES (0, 'DummyPlayer');
+DO 0;

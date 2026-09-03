@@ -36,5 +36,6 @@ PlayerSaveData Player::GetSaveData() {
   data.y = _info.posinfo().y();
   data.z = _info.posinfo().z();
   data.gold = _gold;
+  data.level = _level; // [F9] 레벨도 스냅샷에 포함해 DB 저장 대상으로 편입
   return data;
 }
