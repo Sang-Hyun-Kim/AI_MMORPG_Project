@@ -115,20 +115,27 @@ public:
 	TSoftClassPtr<UUserWidget> LoginWidgetClass;
 
 	/*
-	 * [2026-09-04 / T4] 인증 성공 후 이동할 게임 레벨의 **에셋 이름**
+	 * [2026-09-04 5차 / P2-2] 인증 성공 후 이동할 게임 레벨의 **에셋 참조**
 	 *
-	 *   기본값은 NAME_None이며, 이때는 **레벨 전환을 하지 않고** 곧바로
-	 *   C_ENTER_GAME을 보냅니다 — 즉 기존 단일 레벨 동작과 완전히 동일합니다.
-	 *   레벨 2개 구성이 준비되면 여기에 게임 레벨 이름을 넣으십시오.
+	 *   기본값은 비어 있으며(IsNull), 이때는 **레벨 전환을 하지 않고** 곧바로
+	 *   C_ENTER_GAME을 보냅니다 — 레벨을 나누지 않은 구성과 완전히 동일합니다.
+	 *   ⚠️ 이 "미지정 시 전환 없음" 규칙은 안전망입니다. 지우지 마십시오.
+	 *
 	 *   [2026-09-04 확정된 레벨 배치]
 	 *     /Game/Level/LoginLevel   액터 10개  - 로그인 화면 (시작 맵)
 	 *     /Game/Level/LobbyLevel   액터 74개  - 로그인한 사용자가 스폰되는 레벨
-	 *   따라서 이 값의 정상값은 "LobbyLevel" 입니다.
+	 *   따라서 이 값의 정상값은 /Game/Level/LobbyLevel.LobbyLevel 입니다.
 	 *
-	 *   경로가 아니라 **에셋 이름**입니다. (예: GameLevel)
+	 *   [왜 FName 이 아니라 TSoftObjectPtr 인가 — 2026-09-04 5차 교체 사유]
+	 *     이전에는 FName GameLevelName 에 **에셋 이름 문자열**을 넣었습니다.
+	 *     문자열은 에셋과의 연결이 끊겨도 컴파일·쿠킹 어느 단계에서도 걸리지 않고,
+	 *     실제로 레벨을 Level 폴더로 옮겼을 때 .ini 가 옛 경로를 가리켜 깨졌습니다(B-2).
+	 *     TSoftObjectPtr 는 에디터가 참조를 추적하므로 이름 변경·폴더 이동을 따라갑니다.
+	 *     또한 짧은 이름/전체 경로를 모두 받아들이려고 넣었던 문자열 자르기(UE-3)가
+	 *     불필요해집니다 — 비교는 GetAssetName() 한 번으로 끝납니다.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Config, Category = "Level")
-	FName GameLevelName = NAME_None;
+	TSoftObjectPtr<UWorld> GameLevel;
 
 	/** 로그인 결과 알림. 위젯이 바인딩해 실패 사유를 표시합니다. */
 	UPROPERTY(BlueprintAssignable, Category = "Auth")

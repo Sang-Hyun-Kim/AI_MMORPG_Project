@@ -33,7 +33,7 @@ bool Handle_S_LOGIN(PacketSessionRef& session, Protocol::S_LOGIN& pkt)
 			 *
 			 * 변경 후: GameInstance가 "레벨 전환이 필요한가"를 판단하고,
 			 *   필요하면 레벨을 열고 **로드와 폰 Possess가 끝난 뒤에** 보냅니다.
-			 *   GameLevelName이 비어 있으면(현재 기본값) 곧바로 보내므로
+			 *   GameLevel(TSoftObjectPtr<UWorld>)이 비어 있으면 곧바로 보내므로
 			 *   기존 단일 레벨 동작과 동일합니다.
 			 *
 			 * ⚠️ 여기로 송신 코드를 되돌리지 마십시오. 레벨 전환이 도입되는 순간

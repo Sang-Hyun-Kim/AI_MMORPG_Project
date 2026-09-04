@@ -56,8 +56,23 @@ void GameRoom::Enter(GameObjectRef gameObject) {
   info->CopyFrom(*player->GetObjectInfo());
 
   SendBufferRef sendBuffer = ServerPacketHandler::MakeSendBuffer(spawnPkt);
-  BroadcastToAdjacentSectors(player->GetPosInfo()->x(),
-                             player->GetPosInfo()->y(), sendBuffer);
+
+  /*
+   * [V19 / 2026-09-04 5차] 입·퇴장 브로드캐스트를 대칭으로 맞췄습니다.
+   *
+   *   이전: Enter 는 BroadcastToAdjacentSectors(AOI 반경 2000), Leave 는 Broadcast(방 전체).
+   *   비대칭의 결과로 두 플레이어가 2000 이상 떨어져 있으면 서로를 영영 보지 못하고,
+   *   반대로 받은 적 없는 오브젝트의 S_DESPAWN 을 받을 수 있었습니다.
+   *   바로 아래 "본인에게 방 전체 목록 전송"도 이미 AOI 를 적용하지 않으므로,
+   *   Leave 쪽 기준(방 전체)에 맞추는 것이 세 경로 모두와 일관됩니다.
+   *
+   *   ⚠️ AOI 반경(2000) 자체는 손대지 않았습니다 — 사용자 지시(2026-09-04).
+   *      AOI 는 진입/이탈 추적을 포함해 입·퇴장을 함께 설계할 때 제대로 넣습니다.
+   *      그때까지 S_MOVE(HandleMove) 와 S_ATTACK(HandleAttack) 은 의도적으로
+   *      BroadcastToAdjacentSectors 로 남겨 둡니다. 여기만 보고 나머지를 따라
+   *      바꾸지 마십시오. 반경 개념이 통째로 무력화됩니다.
+   */
+  Broadcast(sendBuffer);
 
   // 본인에게는 현재 방에 있는 유저들 정보를 전송
   Protocol::S_SPAWN mySpawnPkt;
@@ -96,7 +111,9 @@ void GameRoom::Leave(GameObjectRef gameObject) {
   despawnPkt.add_objectids(objectId);
 
   SendBufferRef sendBuffer = ServerPacketHandler::MakeSendBuffer(despawnPkt);
-  Broadcast(sendBuffer); // 임시로 전체 브로드캐스트
+  // [V19 / 2026-09-04 5차] Enter 와 대칭. 이전 주석의 "임시로"는 Enter 가 AOI 였던 시절의
+  // 표현이었습니다. 이제 입·퇴장 모두 방 전체가 기준이며 이것이 의도된 동작입니다.
+  Broadcast(sendBuffer);
 }
 
 JobTask GameRoom::SavePlayerToDB(PlayerSaveData data) {

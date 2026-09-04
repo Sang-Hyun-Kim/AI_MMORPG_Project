@@ -338,8 +338,8 @@ void UAMC1GameInstance::NotifyLoginWidgetShown(UUserWidget* InWidget)
 /*
  * OnAuthenticatedEnterWorld — S_LOGIN 성공 시 호출됩니다. [T4]
  *
- * GameLevelName이 비어 있거나 이미 그 레벨에 있으면 **전환하지 않고** 곧바로
- * C_ENTER_GAME을 보냅니다. 즉 레벨을 아직 나누지 않은 현재 상태에서는
+ * GameLevel이 비어 있거나 이미 그 레벨에 있으면 **전환하지 않고** 곧바로
+ * C_ENTER_GAME을 보냅니다. 즉 레벨을 아직 나누지 않은 구성에서는
  * 기존 동작과 완전히 동일합니다.
  */
 void UAMC1GameInstance::OnAuthenticatedEnterWorld()
@@ -351,35 +351,30 @@ void UAMC1GameInstance::OnAuthenticatedEnterWorld()
 		LoginWidget = nullptr;
 	}
 
-	if (GameLevelName.IsNone())
+	/*
+	 * ⚠️ [안전망 · 유지 필수] 게임 레벨이 지정되지 않았으면 전환하지 않습니다.
+	 *    레벨을 나누지 않은 구성이나 에셋이 아직 없는 상태에서도 게임에
+	 *    들어갈 수 있어야 합니다. 이 분기를 지우면 진입 경로가 사라집니다.
+	 */
+	if (GameLevel.IsNull())
 	{
 		SendEnterGame();
 		return;
 	}
 
 	/*
-	 * [2026-09-04 보강] 짧은 이름과 전체 경로를 모두 받아들입니다.
+	 * [2026-09-04 5차 / P2-2] 문자열 자르기를 걷어냈습니다.
 	 *
-	 *   GetCurrentLevelName(bRemovePrefixString=true)은 **짧은 이름**을 돌려줍니다("LobbyLevel").
-	 *   그런데 설정에는 경로를 적기 쉽습니다("/Game/Level/LobbyLevel").
-	 *   그대로 비교하면 항상 불일치로 판정되어, 이미 그 레벨에 있어도 다시 여는
-	 *   불필요한 재로드가 발생합니다. 마지막 '/' 뒤만 잘라 비교합니다.
-	 *   (레벨을 Level 폴더로 옮기면서 실제로 발생 가능해진 문제입니다.)
+	 *   이전에는 FName 에 담긴 값이 짧은 이름("LobbyLevel")일 수도, 전체 경로
+	 *   ("/Game/Level/LobbyLevel.LobbyLevel")일 수도 있어서 마지막 '/' 뒤와
+	 *   '.' 앞을 직접 잘라 비교했습니다(UE-3). 에셋 참조는 표기가 하나로
+	 *   정규화되므로 GetAssetName() 이 항상 짧은 이름을 돌려줍니다.
+	 *   GetCurrentLevelName(bRemovePrefixString=true) 도 짧은 이름이라 그대로 맞물립니다.
+	 *   (PIE 의 UEDPIE_0_ 접두사는 그 인자가 떼어 줍니다.)
 	 */
-	FString TargetShort = GameLevelName.ToString();
-	int32 SlashIdx = INDEX_NONE;
-	if (TargetShort.FindLastChar(TEXT('/'), SlashIdx))
-	{
-		TargetShort = TargetShort.RightChop(SlashIdx + 1);
-	}
-	// "/Game/Level/LobbyLevel.LobbyLevel" 같은 표기도 처리합니다.
-	int32 DotIdx = INDEX_NONE;
-	if (TargetShort.FindChar(TEXT('.'), DotIdx))
-	{
-		TargetShort = TargetShort.Left(DotIdx);
-	}
-
+	const FString TargetShort  = GameLevel.GetAssetName();
 	const FString CurrentLevel = UGameplayStatics::GetCurrentLevelName(this, /*bRemovePrefixString=*/true);
+
 	if (CurrentLevel.Equals(TargetShort, ESearchCase::IgnoreCase))
 	{
 		// 이미 게임 레벨입니다. 전환하면 방금 만든 월드를 버리게 되므로 하지 않습니다.
@@ -388,9 +383,10 @@ void UAMC1GameInstance::OnAuthenticatedEnterWorld()
 		return;
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("[UAMC1GameInstance] Auth OK -> OpenLevel(%s)"), *GameLevelName.ToString());
+	UE_LOG(LogTemp, Log, TEXT("[UAMC1GameInstance] Auth OK -> OpenLevelBySoftObjectPtr(%s)"),
+		*GameLevel.ToSoftObjectPath().ToString());
 	bPendingEnterGame = true;
-	UGameplayStatics::OpenLevel(this, GameLevelName);
+	UGameplayStatics::OpenLevelBySoftObjectPtr(this, GameLevel);
 }
 
 /*

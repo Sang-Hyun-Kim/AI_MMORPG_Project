@@ -158,6 +158,22 @@ bool UAMC1ObjectManager::ApplyTransformToLocalPawn(const FVector& Location, floa
 	Pawn->SetActorRotation(NewRotation);
 	PC->SetControlRotation(NewRotation);
 
+	/*
+	 * [P2-3 / 2026-09-04 5차] 화면 메시지와 **같은 문자열**을 로그 파일에도 남깁니다.
+	 *
+	 *   이전에는 좌표 복원 사실이 AddOnScreenDebugMessage 로만 표시되어
+	 *   Saved/Logs/AMC1.log 에 흔적이 남지 않았습니다. 그래서 "복원이 됐는가"를
+	 *   판별하려면 PIE 화면을 사람이 직접 봐야 했습니다(2026-09-04 진단 시 실제로 겪음).
+	 *   EC2 원격 시험처럼 화면을 볼 수 없는 상황에서는 판별 자체가 불가능해집니다.
+	 *
+	 *   바로 아래 "Applied saved transform" 로그는 이미 있었지만 태그가 달라
+	 *   화면에서 본 문구(★ [Restore])로 로그를 검색하면 아무것도 걸리지 않았습니다.
+	 *   두 표현을 일치시켜 화면 관측과 로그 검색이 같은 키워드로 맞물리게 합니다.
+	 */
+	UE_LOG(LogTemp, Log,
+		TEXT("★ [Restore] Loaded position from DB: %.0f, %.0f, %.0f (Yaw=%.1f) ★"),
+		Location.X, Location.Y, Location.Z, Yaw);
+
 	UE_LOG(LogTemp, Log,
 		TEXT("[UAMC1ObjectManager] Applied saved transform to local pawn: %s (Yaw=%.1f)"),
 		*Location.ToString(), Yaw);
