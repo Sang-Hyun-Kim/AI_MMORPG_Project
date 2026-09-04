@@ -43,7 +43,11 @@ THIRD_PARTY_INCLUDES_END
 
 // C++20: std::span을 활용하여 버퍼 오버플로우를 방지하는 모던 핸들러 시그니처
 using PacketHandlerFunc = std::function<bool(PacketSessionRef&, std::span<std::byte>)>;
-// [S2] 65535가 아니라 65536칸이어야 합니다. header.id(uint16)가 65535일 때 범위 밖 접근이 발생합니다.
+// [S2] 배열 크기는 UINT16_MAX(=65535)가 아니라 UINT16_MAX + 1(=65536)이어야 합니다.
+//      header.id(uint16)가 65535일 때 GPacketHandler[65535]는 범위 밖 접근이 됩니다.
+//      2026-09-03에 생성물 3벌(UE/DummyClient/GameServer)에 손으로 적용했으나
+//      본 템플릿이 갱신되지 않아, GenPackets.bat을 돌리면 조용히 회귀하는
+//      상태였습니다(2026-09-04 발견). 여기를 되돌리지 마십시오.
 extern std::array<PacketHandlerFunc, UINT16_MAX + 1> GPacketHandler;
 
 // C++20: enum class를 통한 강력한 타입 체크
@@ -82,8 +86,22 @@ bool Handle_S_PONG(PacketSessionRef& session, Protocol::S_PONG& pkt);
 bool Handle_S_ATTACK(PacketSessionRef& session, Protocol::S_ATTACK& pkt);
 bool Handle_S_STATUS_CHANGE(PacketSessionRef& session, Protocol::S_STATUS_CHANGE& pkt);
 
-class UAMC1GameInstance;
-
+/*
+ * [경고 / 2026-09-04] 이 클래스와 이 파일은 GenPackets.bat이 **통째로 덮어씁니다.**
+ *
+ *   GenPackets.bat은 생성물을 이동/복사합니다.
+ *       move ClientPacketHandler.h -> Client/AMC1/Source/AMC1/Network/
+ *       copy ClientPacketHandler.h -> Server/DummyClient/Packet/
+ *       move ServerPacketHandler.h -> Server/GameServer/Packet/
+ *
+ *   따라서 생성된 헤더에 손으로 추가한 코드는 다음 실행 때 조용히 사라집니다.
+ *   실제로 UE 헤더에 손으로 넣어 둔 GGameInstance 전역과 [S2] 하드닝이
+ *   그런 상태였습니다(2026-09-04 발견). [S2]는 이 템플릿에 반영해 복구했고,
+ *   GGameInstance는 Network/ClientPacketSession.h 로 옮겨 제거했습니다.
+ *
+ *   ⚠️ 프로젝트 고유 코드(UE 전용 타입, 전역 상태 등)를 생성 헤더에 넣지 마십시오.
+ *      별도 파일에 두거나, 모든 생성물에 필요한 것이라면 이 템플릿을 고치십시오.
+ */
 class ClientPacketHandler
 {
 public:
@@ -116,13 +134,6 @@ public:
 	static SendBufferRef MakeSendBuffer(Protocol::C_PING& pkt) { return MakeSendBuffer(pkt, static_cast<uint16>(PacketID::PKT_C_PING)); }
 	static SendBufferRef MakeSendBuffer(Protocol::C_ATTACK& pkt) { return MakeSendBuffer(pkt, static_cast<uint16>(PacketID::PKT_C_ATTACK)); }
 	static SendBufferRef MakeSendBuffer(Protocol::C_CHECK_MAILBOX& pkt) { return MakeSendBuffer(pkt, static_cast<uint16>(PacketID::PKT_C_CHECK_MAILBOX)); }
-
-	// ★ TWeakObjectPtr로 전환: GC 안전 + Dangling 방지
-	// [아키텍처 경고] 이 전역 변수는 ClientPacketHandler와 GameInstance 간의
-	// 양방향 의존성(Circular Dependency)을 만듭니다. 현재 프로젝트 규모에서는
-	// 실용적으로 수용하지만, 추후 DI(Dependency Injection) 패턴으로
-	// 리팩토링해야 할 대상입니다. (목표: 9/5 이후)
-	static TWeakObjectPtr<UAMC1GameInstance> GGameInstance;
 
 private:
 	template<typename PacketType, typename ProcessFunc>

@@ -3,6 +3,7 @@
 #include "SocketSubsystem.h"
 #include "HAL/RunnableThread.h"
 #include "ClientPacketHandler.h"
+#include "ClientPacketSession.h"
 #include "../AMC1.h"
 #include "../AMC1GameInstance.h"
 #include "Engine/Engine.h"
@@ -69,16 +70,30 @@ uint32 FNetworkWorker::Run()
 					{
 						if (UAMC1GameInstance* GI = WeakGI.Get())
 						{
-							ClientPacketHandler::GGameInstance = GI;
-
+							/*
+							 * [2026-09-04] 전역 대입 대신 세션에 소유자를 실어 넘깁니다. - 결함 UE-1
+							 *
+							 * 변경 전에는 여기서 ClientPacketHandler::GGameInstance에 GI를 넣고
+							 * 처리 직후 nullptr로 지웠습니다. 즉 static을 "람다에서 핸들러로 값을
+							 * 넘기는 통로"로 쓰고 있었고, 정작 진짜 넘길 자리(PacketSessionRef)에는
+							 * nullptr을 넣고 있었습니다.
+							 *
+							 * 단일 프로세스 PIE에서 창을 여럿 띄우면 각 창의 GameInstance가 그
+							 * 하나뿐인 static을 서로 덮어써, 모든 연결의 패킷이 마지막
+							 * GameInstance의 월드로 흘러갔습니다. 이제 각 연결이 자기 소유자만
+							 * 참조하므로 창마다 독립적으로 동작합니다.
+							 *
+							 * 주의: AsyncTask(GameThread) 디스패치와 PacketCopy/MoveTemp 구조는
+							 *   그대로입니다. 이 변경은 "무엇을 넘기는가"만 바꾸고 "어느 스레드에서
+							 *   실행하는가"는 건드리지 않습니다. 디스패치를 없애면 SpawnActor에서
+							 *   check(IsInGameThread()) assertion으로 즉시 크래시합니다.
+							 */
 							std::span<std::byte> Span(
 								reinterpret_cast<std::byte*>(const_cast<uint8*>(PacketCopy.GetData())),
 								PacketCopy.Num()
 							);
-							PacketSessionRef DummySession = nullptr;
-							ClientPacketHandler::HandlePacket(DummySession, Span);
-
-							ClientPacketHandler::GGameInstance = nullptr;
+							PacketSessionRef Session = MakeShared<FClientPacketSession>(GI);
+							ClientPacketHandler::HandlePacket(Session, Span);
 						}
 					});
 

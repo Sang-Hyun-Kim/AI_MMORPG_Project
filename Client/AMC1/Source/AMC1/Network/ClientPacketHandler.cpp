@@ -1,11 +1,11 @@
 #include "ClientPacketHandler.h"
 #include "../AMC1.h" // For UE_LOG, etc.
+#include "ClientPacketSession.h"
 #include "../AMC1GameInstance.h"
 #include "../Manager/AMC1ObjectManager.h"
 #include "Engine/Engine.h"
 
 std::array<PacketHandlerFunc, UINT16_MAX + 1> GPacketHandler; // [S2] 65536칸
-TWeakObjectPtr<UAMC1GameInstance> ClientPacketHandler::GGameInstance = nullptr;
 
 bool Handle_INVALID(PacketSessionRef& session, std::span<std::byte> buffer)
 {
@@ -20,14 +20,26 @@ bool Handle_S_LOGIN(PacketSessionRef& session, Protocol::S_LOGIN& pkt)
 
 	if (pkt.success())
 	{
-		UAMC1GameInstance* GI = ClientPacketHandler::GGameInstance.Get();
+		UAMC1GameInstance* GI = GetGameInstanceFrom(session);
 		if (GI)
 		{
-			Protocol::C_ENTER_GAME enterPkt;
-			enterPkt.set_playerindex(0); // 첫 번째 캐릭터로 자동 접속 시뮬레이션
-			SendBufferRef sendBuf = ClientPacketHandler::MakeSendBuffer(enterPkt);
-			GI->SendPacket(sendBuf);
-			UE_LOG(LogTemp, Log, TEXT("[PacketHandler] C_ENTER_GAME Sent automatically"));
+			/*
+			 * [2026-09-04 / T4] C_ENTER_GAME 송신을 GameInstance로 이관했습니다.
+			 *
+			 * 변경 전: 이 자리에서 곧바로 C_ENTER_GAME을 보냈습니다.
+			 *   레벨이 하나뿐일 때는 문제가 없었지만, 로그인 레벨 -> 게임 레벨
+			 *   전환을 끼워 넣으면 깨집니다. 서버의 S_ENTER_GAME(좌표)이
+			 *   **레벨 로드보다 먼저 도착**해 적용할 폰이 없기 때문입니다.
+			 *
+			 * 변경 후: GameInstance가 "레벨 전환이 필요한가"를 판단하고,
+			 *   필요하면 레벨을 열고 **로드와 폰 Possess가 끝난 뒤에** 보냅니다.
+			 *   GameLevelName이 비어 있으면(현재 기본값) 곧바로 보내므로
+			 *   기존 단일 레벨 동작과 동일합니다.
+			 *
+			 * ⚠️ 여기로 송신 코드를 되돌리지 마십시오. 레벨 전환이 도입되는 순간
+			 *    좌표 복원이 타이밍에 따라 들쭉날쭉해집니다(F10과 같은 유형).
+			 */
+			GI->OnAuthenticatedEnterWorld();
 		}
 	}
 
@@ -40,7 +52,7 @@ bool Handle_S_ENTER_GAME(PacketSessionRef& session, Protocol::S_ENTER_GAME& pkt)
 
 	if (pkt.success())
 	{
-		UAMC1GameInstance* GI = ClientPacketHandler::GGameInstance.Get();
+		UAMC1GameInstance* GI = GetGameInstanceFrom(session);
 		if (GI)
 		{
 			UAMC1ObjectManager* ObjManager = GI->GetSubsystem<UAMC1ObjectManager>();
@@ -94,7 +106,7 @@ bool Handle_S_LEAVE_GAME(PacketSessionRef& session, Protocol::S_LEAVE_GAME& pkt)
 
 bool Handle_S_SPAWN(PacketSessionRef& session, Protocol::S_SPAWN& pkt)
 {
-	UAMC1GameInstance* GI = ClientPacketHandler::GGameInstance.Get();
+	UAMC1GameInstance* GI = GetGameInstanceFrom(session);
 	if (!GI) return true;
 	UAMC1ObjectManager* ObjManager = GI->GetSubsystem<UAMC1ObjectManager>();
 	if (!ObjManager) return true;
@@ -116,7 +128,7 @@ bool Handle_S_DESPAWN(PacketSessionRef& session, Protocol::S_DESPAWN& pkt)
 {
 	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan, TEXT("[Packet] S_DESPAWN"));
 
-	UAMC1GameInstance* GI = ClientPacketHandler::GGameInstance.Get();
+	UAMC1GameInstance* GI = GetGameInstanceFrom(session);
 	if (!GI) return true;
 	UAMC1ObjectManager* ObjManager = GI->GetSubsystem<UAMC1ObjectManager>();
 	if (!ObjManager) return true;
@@ -130,7 +142,7 @@ bool Handle_S_DESPAWN(PacketSessionRef& session, Protocol::S_DESPAWN& pkt)
 
 bool Handle_S_MOVE(PacketSessionRef& session, Protocol::S_MOVE& pkt)
 {
-	UAMC1GameInstance* GI = ClientPacketHandler::GGameInstance.Get();
+	UAMC1GameInstance* GI = GetGameInstanceFrom(session);
 	if (!GI) return true;
 	UAMC1ObjectManager* ObjManager = GI->GetSubsystem<UAMC1ObjectManager>();
 	if (!ObjManager) return true;
