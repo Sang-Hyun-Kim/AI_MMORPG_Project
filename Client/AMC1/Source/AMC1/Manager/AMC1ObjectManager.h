@@ -52,6 +52,33 @@ public:
 	/** 보류된 좌표가 있으면 지금 적용을 시도합니다. 폰이 준비된 뒤 호출됩니다. */
 	void TryFlushPendingTransform();
 
+	/*
+	 * ResetForNewLevel — 레벨 전환 시 상태를 정리합니다. (2026-09-04 신설 / T5)
+	 *
+	 * [왜 필요한가]
+	 *   이 클래스는 UGameInstanceSubsystem이므로 **레벨 전환을 살아남습니다.**
+	 *   반면 이것이 들고 있는 것들은 레벨과 함께 죽거나 무효화됩니다.
+	 *
+	 *     ProxyCharacters       액터는 파괴되고 UPROPERTY라 포인터는 null이 되지만
+	 *                           **키(엔트리)는 남습니다.** 재입장 시 "이미 있다"고
+	 *                           판단해 스폰을 건너뛰어 남이 보이지 않습니다.
+	 *     bHasPendingTransform  이전 세션의 보류 좌표가 새 레벨에 적용될 수 있습니다.
+	 *     PendingTransformTimer **옛 월드의 TimerManager에 묶여 무효화**됩니다.
+	 *                           재시도가 영영 돌지 않으며 조용히 실패합니다.
+	 *
+	 *   호출부: UAMC1GameInstance::HandlePostLoadMap (PostLoadMapWithWorld)
+	 *
+	 * ⚠️ 이 호출을 빼면 증상이 "가끔"만 나타납니다. 첫 로그인은 멀쩡하고
+	 *    재로그인이나 두 번째 클라이언트에서만 깨져 재현이 어렵습니다.
+	 *
+	 * [MyPlayerId를 지우지 않는 이유]
+	 *   레벨 전환은 같은 사람이 같은 세션으로 이동하는 것이므로 신원은 유지합니다.
+	 *   S_ENTER_GAME이 곧 같은 값으로 다시 설정하기도 합니다.
+	 *   ⚠️ 다만 "로그아웃 후 다른 계정으로 로그인"을 지원하게 되면 그 시점에
+	 *      MyPlayerId도 초기화해야 합니다. 현재는 그 경로가 없습니다.
+	 */
+	void ResetForNewLevel();
+
 private:
 	/** 보류된 좌표를 실제 폰에 적용합니다. 성공하면 true. */
 	bool ApplyTransformToLocalPawn(const FVector& Location, float Yaw);

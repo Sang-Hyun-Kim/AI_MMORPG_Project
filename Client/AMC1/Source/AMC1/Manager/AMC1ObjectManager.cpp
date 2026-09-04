@@ -29,6 +29,57 @@ void UAMC1ObjectManager::Deinitialize()
 }
 
 /*
+ * ResetForNewLevel — 레벨 전환 시 상태 정리 (2026-09-04 신설 / T5)
+ *
+ * 이 서브시스템은 GameInstance와 함께 레벨 전환을 살아남지만, 아래 상태들은
+ * 레벨과 함께 죽거나 무효화됩니다. 자세한 배경은 헤더의 선언부 주석을 보십시오.
+ *
+ * 호출부: UAMC1GameInstance::HandlePostLoadMap
+ */
+void UAMC1ObjectManager::ResetForNewLevel()
+{
+	/*
+	 * 1) 보류 재시도 타이머
+	 *    옛 월드의 TimerManager에 묶여 있어 전환 후에는 절대 돌지 않습니다.
+	 *    ClearTimer는 새 월드의 매니저를 대상으로 하므로 사실상 무해하지만,
+	 *    핸들 자체를 무효화해 두어야 이후 SetTimer가 깨끗하게 새로 잡힙니다.
+	 */
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(PendingTransformTimer);
+	}
+	PendingTransformTimer.Invalidate();
+
+	/*
+	 * 2) 보류 좌표
+	 *    이전 세션에서 적용하지 못한 좌표가 남아 있으면 새 레벨의 폰에
+	 *    엉뚱하게 적용됩니다. 새 레벨에서는 서버가 S_ENTER_GAME으로
+	 *    좌표를 다시 보내주므로 버리는 것이 옳습니다.
+	 */
+	bHasPendingTransform = false;
+	PendingLocation = FVector::ZeroVector;
+	PendingYaw = 0.f;
+
+	/*
+	 * 3) 프록시 맵
+	 *    액터는 레벨과 함께 파괴되었고 UPROPERTY라 포인터는 GC가 null로 만들지만
+	 *    **키는 그대로 남습니다.** 그 상태로 재입장하면 SpawnProxy가
+	 *    "이미 있다"고 판단해 스폰을 건너뛰어 다른 플레이어가 보이지 않습니다.
+	 *    새 레벨에서는 서버가 S_SPAWN으로 현재 방의 인원을 다시 알려주므로
+	 *    비우는 것이 정답입니다.
+	 */
+	const int32 StaleCount = ProxyCharacters.Num();
+	ProxyCharacters.Empty();
+
+	UE_LOG(LogTemp, Log,
+		TEXT("[ObjectManager] ResetForNewLevel: cleared %d proxy entries, pending transform dropped."),
+		StaleCount);
+
+	// MyPlayerId는 유지합니다 — 같은 사람이 같은 세션으로 레벨을 옮기는 것이므로.
+	// (로그아웃 후 다른 계정 로그인을 지원하게 되면 그때 초기화가 필요합니다.)
+}
+
+/*
  * ApplyMyPlayerTransform — 결함 F10 대응
  * 서버가 S_ENTER_GAME에 실어 보낸 "DB에 저장돼 있던 마지막 좌표"를 내 폰에 적용합니다.
  * 자세한 경위는 AMC1ObjectManager.h의 선언부 주석을 참고하세요.

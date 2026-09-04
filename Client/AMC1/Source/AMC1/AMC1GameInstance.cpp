@@ -1,4 +1,12 @@
 #include "AMC1GameInstance.h"
+#include "Blueprint/UserWidget.h"
+#include "Kismet/GameplayStatics.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/Pawn.h"
+#include "Engine/World.h"
+#include "UObject/UObjectGlobals.h"   // FCoreUObjectDelegates::PostLoadMapWithWorld
+#include "Manager/AMC1ObjectManager.h"
+#include "Network/ClientPacketHandler.h"
 #include "Network/NetworkWorker.h"
 #include "Network/ClientPacketHandler.h"
 #include "Sockets.h"
@@ -24,21 +32,71 @@ void UAMC1GameInstance::Init()
 		return;
 
 	ClientPacketHandler::Init();
-	ClientPacketHandler::GGameInstance = this;
+	// [2026-09-04] ClientPacketHandler::GGameInstance = this;  <- 제거됨 (결함 UE-1)
+	//   소유자는 이제 수신 시점에 FClientPacketSession으로 전달됩니다.
+	//   전역에 자기 자신을 등록하면 PIE 다중 창에서 서로를 덮어씁니다.
 
-	// [2026-09-04] 접속 전에 C# 백엔드 로그인을 먼저 수행합니다.
-	// 과거에는 여기서 곧장 ConnectToServer()를 호출하고 접속 직후 난수 더미 티켓을
-	// 스스로 만들어 보냈습니다. 그 때문에 PIE를 돌릴 때마다 서버가 다른 사람으로
-	// 인식했고 재접속 왕복을 시험할 수 없었습니다. [F7 1번째 겹]
-	LoginAndConnect();
+	/*
+	 * [2026-09-04 / T4] 레벨 로드 완료 알림 구독
+	 *
+	 *   두 가지 목적을 겸합니다.
+	 *     · 로그인 레벨이 뜨면 → 로그인 위젯을 올린다
+	 *     · 게임 레벨이 뜨면   → ObjectManager를 정리하고 C_ENTER_GAME을 보낸다
+	 *
+	 *   ⚠️ Shutdown()에서 반드시 해제해야 합니다. 남겨두면 GameInstance가 파괴된 뒤
+	 *      호출되어 크래시합니다.
+	 */
+	PostLoadMapHandle = FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(
+		this, &UAMC1GameInstance::HandlePostLoadMap);
+
+	// 커맨드라인/ini 값을 먼저 확정합니다(위젯 기본값 표시에도 쓰입니다).
+	ResolveServerAddress();
+
+	/*
+	 * [2026-09-04 / T2·T3] 자동 로그인은 "위젯이 없을 때만" 수행합니다.
+	 *
+	 *   변경 전: 여기서 무조건 LoginAndConnect()를 불렀습니다. 그래서 PIE를 누르면
+	 *     알아서 접속했고, 로그인 화면이 낄 자리가 없었습니다.
+	 *
+	 *   변경 후: LoginWidgetClass가 지정되어 있으면 사용자가 Submit할 때까지 기다립니다.
+	 *
+	 *   ⚠️ **미지정 시 자동 로그인을 유지하는 이 분기를 지우지 마십시오.**
+	 *      WBP 에셋이 아직 없는 상태에서 자동 로그인을 떼면 게임에 들어갈 방법이
+	 *      사라집니다. 위젯이 준비될 때까지의 안전망입니다.
+	 */
+	if (LoginWidgetClass.IsNull())
+	{
+		UE_LOG(LogTemp, Log,
+			TEXT("[UAMC1GameInstance] LoginWidgetClass is not set - falling back to auto login."));
+		LoginAndConnect();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Log,
+			TEXT("[UAMC1GameInstance] Waiting for login widget submit."));
+	}
 }
 
 void UAMC1GameInstance::Shutdown()
 {
 	DisconnectFromServer();
 
-	// 댕글링 포인터 방지를 위한 전역 약참조 초기화
-	ClientPacketHandler::GGameInstance = nullptr;
+	// [2026-09-04] 전역 약참조 초기화 제거 (결함 UE-1)
+	//   전역이 없어졌으므로 정리할 대상도 없습니다. 세션이 들고 있는 약참조는
+	//   GameInstance가 파괴되면 스스로 무효화됩니다.
+
+	// [2026-09-04 / T4] 레벨 로드 구독 해제. 남기면 파괴된 객체로 호출되어 크래시합니다.
+	if (PostLoadMapHandle.IsValid())
+	{
+		FCoreUObjectDelegates::PostLoadMapWithWorld.Remove(PostLoadMapHandle);
+		PostLoadMapHandle.Reset();
+	}
+
+	if (GetWorld())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(EnterGameRetryTimer);
+		GetWorld()->GetTimerManager().ClearTimer(LoginWidgetRetryTimer);
+	}
 
 	Super::Shutdown();
 }
@@ -186,6 +244,8 @@ void UAMC1GameInstance::OnLoginResponse(FHttpRequestPtr Request, FHttpResponsePt
 		UE_LOG(LogTemp, Error, TEXT("[UAMC1GameInstance] Login failed: %s"), *Reason);
 		if (GEngine) GEngine->AddOnScreenDebugMessage(2, 12.f, FColor::Red,
 			FString::Printf(TEXT("[Auth] Login FAILED - %s"), *Reason));
+		// [T3] 위젯이 자기 자리에 사유를 표시할 수 있도록 결과를 알립니다.
+		OnLoginResult.Broadcast(false, Reason);
 	};
 
 	if (!bConnectedSuccessfully || !Response.IsValid())
@@ -232,8 +292,266 @@ void UAMC1GameInstance::OnLoginResponse(FHttpRequestPtr Request, FHttpResponsePt
 	if (GEngine) GEngine->AddOnScreenDebugMessage(2, 8.f, FColor::Green,
 		FString::Printf(TEXT("[Auth] Login OK - PlayerId %lld"), ExpectedPlayerId));
 
+	OnLoginResult.Broadcast(true, FString::Printf(TEXT("PlayerId %lld"), ExpectedPlayerId));
+
 	PendingTicket = Ticket;
 	ConnectToServer();
+}
+
+/*
+ * SubmitLogin — 위젯의 로그인 버튼이 호출합니다. [T3]
+ */
+void UAMC1GameInstance::SubmitLogin(const FString& InAccountName, const FString& InPassword)
+{
+	if (InAccountName.IsEmpty() || InPassword.IsEmpty())
+	{
+		// 서버 왕복 없이 즉시 되돌려 줍니다. 빈 값으로 요청을 보내면 401만 받고
+		// 사용자는 "서버 문제"로 오해하게 됩니다.
+		OnLoginResult.Broadcast(false, TEXT("계정과 비밀번호를 모두 입력하십시오."));
+		return;
+	}
+
+	AccountName = InAccountName;
+	Password = InPassword;
+
+	UE_LOG(LogTemp, Log, TEXT("[UAMC1GameInstance] SubmitLogin as '%s'"), *AccountName);
+	LoginAndConnect();
+}
+
+/*
+ * NotifyLoginWidgetShown — 로그인 컨트롤러가 위젯을 띄웠음을 알립니다.
+ *
+ * 이 값이 채워지면 ShowLoginWidget()은 즉시 반환하므로 중복 생성이 없습니다.
+ * 또한 OnAuthenticatedEnterWorld()가 레벨 전환 직전에 이 위젯을 내립니다.
+ */
+void UAMC1GameInstance::NotifyLoginWidgetShown(UUserWidget* InWidget)
+{
+	LoginWidget = InWidget;
+
+	// 컨트롤러가 책임졌으므로 폴백 재시도 타이머는 더 이상 필요 없습니다.
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(LoginWidgetRetryTimer);
+	}
+}
+
+/*
+ * OnAuthenticatedEnterWorld — S_LOGIN 성공 시 호출됩니다. [T4]
+ *
+ * GameLevelName이 비어 있거나 이미 그 레벨에 있으면 **전환하지 않고** 곧바로
+ * C_ENTER_GAME을 보냅니다. 즉 레벨을 아직 나누지 않은 현재 상태에서는
+ * 기존 동작과 완전히 동일합니다.
+ */
+void UAMC1GameInstance::OnAuthenticatedEnterWorld()
+{
+	// 로그인 위젯이 떠 있으면 내립니다(레벨 전환으로도 사라지지만 명시적으로 처리).
+	if (LoginWidget)
+	{
+		LoginWidget->RemoveFromParent();
+		LoginWidget = nullptr;
+	}
+
+	if (GameLevelName.IsNone())
+	{
+		SendEnterGame();
+		return;
+	}
+
+	/*
+	 * [2026-09-04 보강] 짧은 이름과 전체 경로를 모두 받아들입니다.
+	 *
+	 *   GetCurrentLevelName(bRemovePrefixString=true)은 **짧은 이름**을 돌려줍니다("LobbyLevel").
+	 *   그런데 설정에는 경로를 적기 쉽습니다("/Game/Level/LobbyLevel").
+	 *   그대로 비교하면 항상 불일치로 판정되어, 이미 그 레벨에 있어도 다시 여는
+	 *   불필요한 재로드가 발생합니다. 마지막 '/' 뒤만 잘라 비교합니다.
+	 *   (레벨을 Level 폴더로 옮기면서 실제로 발생 가능해진 문제입니다.)
+	 */
+	FString TargetShort = GameLevelName.ToString();
+	int32 SlashIdx = INDEX_NONE;
+	if (TargetShort.FindLastChar(TEXT('/'), SlashIdx))
+	{
+		TargetShort = TargetShort.RightChop(SlashIdx + 1);
+	}
+	// "/Game/Level/LobbyLevel.LobbyLevel" 같은 표기도 처리합니다.
+	int32 DotIdx = INDEX_NONE;
+	if (TargetShort.FindChar(TEXT('.'), DotIdx))
+	{
+		TargetShort = TargetShort.Left(DotIdx);
+	}
+
+	const FString CurrentLevel = UGameplayStatics::GetCurrentLevelName(this, /*bRemovePrefixString=*/true);
+	if (CurrentLevel.Equals(TargetShort, ESearchCase::IgnoreCase))
+	{
+		// 이미 게임 레벨입니다. 전환하면 방금 만든 월드를 버리게 되므로 하지 않습니다.
+		UE_LOG(LogTemp, Log, TEXT("[UAMC1GameInstance] Already in '%s' - skipping level transition."), *CurrentLevel);
+		SendEnterGame();
+		return;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("[UAMC1GameInstance] Auth OK -> OpenLevel(%s)"), *GameLevelName.ToString());
+	bPendingEnterGame = true;
+	UGameplayStatics::OpenLevel(this, GameLevelName);
+}
+
+/*
+ * HandlePostLoadMap — 모든 레벨 로드 완료 시 호출됩니다. [T4·T5]
+ */
+void UAMC1GameInstance::HandlePostLoadMap(UWorld* LoadedWorld)
+{
+	/*
+	 * ⛔ [2026-09-04 / 결함 UE-2] 남의 맵 로드에 반응하지 않도록 걸러냅니다.
+	 *
+	 * FCoreUObjectDelegates::PostLoadMapWithWorld 는 **프로세스 전역 static 델리게이트**입니다.
+	 *     UObjectGlobals.h:3472
+	 *     static COREUOBJECT_API FPostLoadMapDelegate PostLoadMapWithWorld;
+	 *
+	 * 단일 프로세스 PIE에서 창을 여럿 띄우면 각 창의 GameInstance가 **같은 전역
+	 * 델리게이트에 함께 구독**됩니다. 그래서 **어느 한 창이 맵을 로드하면 모든
+	 * GameInstance의 이 함수가 호출**됩니다. 걸러내지 않으면:
+	 *
+	 *   · 플레이 중이던 다른 창에 ShowLoginWidget()이 돌아
+	 *     **게임 화면 위에 로그인 창이 다시 뜹니다.**
+	 *     (2026-09-04 사용자 보고: "2가 로그인하면 1이 로그인 화면으로 전환됨")
+	 *   · ObjectManager::ResetForNewLevel()이 돌아
+	 *     **남의 프록시 캐릭터가 전부 지워집니다.** → 동기화가 깨진 것처럼 보임
+	 *   · bPendingEnterGame이 서 있으면 엉뚱한 인스턴스에서 C_ENTER_GAME이 나갑니다
+	 *
+	 * 이 한 줄이 그 통로를 막습니다. **절대 지우지 마십시오.**
+	 * (패키징된 단일 클라이언트에서는 GameInstance가 하나뿐이라 증상이 드러나지
+	 *  않습니다. PIE 다중 창에서만 터지는, 놓치기 쉬운 유형입니다.)
+	 */
+	if (LoadedWorld == nullptr || LoadedWorld->GetGameInstance() != this)
+	{
+		return;
+	}
+
+	/*
+	 * [T5] ObjectManager는 UGameInstanceSubsystem이라 레벨 전환을 **살아남습니다.**
+	 *   그런데 그것이 들고 있는 프록시 액터 포인터·보류 좌표·타이머는 레벨과 함께
+	 *   죽거나 무효화됩니다. 정리하지 않으면
+	 *     · 프록시 맵에 죽은 키가 남아 재입장 시 스폰을 건너뜀 (남이 안 보임)
+	 *     · 옛 세션의 보류 좌표가 새 레벨에 적용됨
+	 *     · 보류 재시도 타이머가 옛 월드에 묶여 영영 돌지 않음
+	 *   증상이 "가끔"만 나타나 추적이 어려운 종류입니다.
+	 */
+	if (UAMC1ObjectManager* ObjManager = GetSubsystem<UAMC1ObjectManager>())
+	{
+		ObjManager->ResetForNewLevel();
+	}
+
+	if (bPendingEnterGame)
+	{
+		// 게임 레벨에 도착했습니다. 폰이 준비되면 C_ENTER_GAME을 보냅니다.
+		TrySendEnterGame();
+		return;
+	}
+
+	// 게임 레벨이 아니면 로그인 화면입니다.
+	ShowLoginWidget();
+}
+
+/*
+ * ShowLoginWidget — LoginWidgetClass가 지정되어 있을 때만 위젯을 올립니다. [T3]
+ */
+void UAMC1GameInstance::ShowLoginWidget()
+{
+	if (LoginWidgetClass.IsNull())
+	{
+		return; // 위젯 미지정 = 자동 로그인 경로. Init()에서 이미 로그인했습니다.
+	}
+
+	if (LoginWidget)
+	{
+		return; // 이미 떠 있음
+	}
+
+	UClass* WidgetClass = LoginWidgetClass.LoadSynchronous();
+	if (WidgetClass == nullptr)
+	{
+		UE_LOG(LogTemp, Error,
+			TEXT("[UAMC1GameInstance] LoginWidgetClass failed to load: %s"),
+			*LoginWidgetClass.ToString());
+		return;
+	}
+
+	APlayerController* PC = GetFirstLocalPlayerController();
+	if (PC == nullptr)
+	{
+		/*
+		 * [2026-09-04 보강] 여기서 포기하면 로그인 화면이 영영 뜨지 않습니다.
+		 *
+		 *   PostLoadMapWithWorld는 월드 로드 완료 시점이라 PlayerController가
+		 *   아직 만들어지지 않았을 수 있습니다. 초판은 경고만 남기고 return 했는데,
+		 *   그러면 **위젯이 없으니 Submit도 없고, 자동 로그인도 꺼져 있어
+		 *   게임에 들어갈 방법이 완전히 사라집니다.** 준비될 때까지 재시도합니다.
+		 */
+		UE_LOG(LogTemp, Verbose, TEXT("[UAMC1GameInstance] PlayerController not ready - retrying login widget."));
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().SetTimer(
+				LoginWidgetRetryTimer, this, &UAMC1GameInstance::ShowLoginWidget, 0.05f, /*bLoop=*/false);
+		}
+		return;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(LoginWidgetRetryTimer);
+	}
+
+	LoginWidget = CreateWidget<UUserWidget>(PC, WidgetClass);
+	if (LoginWidget)
+	{
+		LoginWidget->AddToViewport();
+		PC->SetShowMouseCursor(true);
+		PC->SetInputMode(FInputModeUIOnly());
+	}
+}
+
+/*
+ * TrySendEnterGame — 폰이 준비되었는지 확인하고 보냅니다. [T4]
+ *
+ * ⚠️ "레벨 로드 완료"와 "폰 Possess 완료"는 **다른 시점**입니다.
+ *   PostLoadMapWithWorld 시점에 GetPawn()이 아직 nullptr일 수 있습니다.
+ *   여기서 확인을 생략하면 F10의 타이밍 경합이 형태만 바꿔 되살아납니다.
+ */
+void UAMC1GameInstance::TrySendEnterGame()
+{
+	APlayerController* PC = GetFirstLocalPlayerController();
+	if (PC != nullptr && PC->GetPawn() != nullptr)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().ClearTimer(EnterGameRetryTimer);
+		}
+		bPendingEnterGame = false;
+		SendEnterGame();
+		return;
+	}
+
+	// 아직입니다. 다음 틱에 다시 봅니다.
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimer(
+			EnterGameRetryTimer, this, &UAMC1GameInstance::TrySendEnterGame, 0.05f, /*bLoop=*/false);
+	}
+}
+
+/*
+ * SendEnterGame — C_ENTER_GAME 송신. [T4]
+ *
+ * 변경 전에는 이 코드가 ClientPacketHandler의 Handle_S_LOGIN 안에 있었습니다.
+ * 레벨 전환을 끼워 넣으려면 "언제 보내는가"를 GameInstance가 통제해야 하므로
+ * 이쪽으로 옮겼습니다.
+ */
+void UAMC1GameInstance::SendEnterGame()
+{
+	Protocol::C_ENTER_GAME EnterPkt;
+	EnterPkt.set_playerindex(0); // 계정당 캐릭터 1개 전제. 캐릭터 선택 도입 시 재검토 [V13]
+	SendBufferRef SendBuf = ClientPacketHandler::MakeSendBuffer(EnterPkt);
+	SendPacket(SendBuf);
+
+	UE_LOG(LogTemp, Log, TEXT("[UAMC1GameInstance] C_ENTER_GAME sent."));
 }
 
 void UAMC1GameInstance::ConnectToServer()
