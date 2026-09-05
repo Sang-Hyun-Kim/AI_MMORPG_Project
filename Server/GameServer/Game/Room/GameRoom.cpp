@@ -5,6 +5,8 @@
 #include "JobTimer.h"
 #include "RedisManager.h"
 #include "ServerPacketHandler.h"
+#include <cmath>    // [AOI-1] std::floor — 음수 좌표 격자 계산
+#include <sstream>  // [AOI-1] 통계 한 줄 조립 (cout 인터리빙 방지)
 #include <sw/redis++/redis++.h>
 
 GameRoom::GameRoom() {}
@@ -37,6 +39,10 @@ void GameRoom::AutoSave() {
   std::cout << "[GameRoom] AutoSave Triggered for " << _players.size()
             << " players." << std::endl;
 
+  // [AOI-1] 60초마다 AOI 관측 통계를 함께 출력합니다.
+  // 새 타이머를 만들지 않고 기존 틱에 얹었습니다.
+  PrintAoiStats();
+
   DoTimer(60000, &GameRoom::AutoSave);
 }
 
@@ -49,6 +55,9 @@ void GameRoom::Enter(GameObjectRef gameObject) {
 
   _players[objectId] = player;
   player->SetRoom(static_pointer_cast<GameRoom>(shared_from_this()));
+
+  // [AOI-1] 격자에 등록. _players 갱신과 반드시 짝을 이뤄야 합니다.
+  AddToSector(objectId, player->GetPosInfo()->x(), player->GetPosInfo()->y());
 
   // S_SPAWN 브로드캐스트
   Protocol::S_SPAWN spawnPkt;
@@ -102,6 +111,12 @@ void GameRoom::Leave(GameObjectRef gameObject) {
   }
 
   uint64 objectId = gameObject->GetObjectId();
+
+  // [AOI-1] 격자에서 먼저 제거합니다. _players 에서 지운 뒤에는 위치를 읽어도
+  // 되지만, 순서를 고정해 두는 편이 다음 사람이 실수할 여지가 적습니다.
+  RemoveFromSector(objectId, gameObject->GetPosInfo()->x(),
+                   gameObject->GetPosInfo()->y());
+
   if (_players.erase(objectId) == 0)
     return;
 
@@ -176,8 +191,19 @@ void GameRoom::HandleMove(PlayerRef player, Protocol::C_MOVE pkt) {
   if (player == nullptr)
     return;
 
+  /*
+   * [AOI-1] 격자 갱신은 좌표를 덮어쓰기 **전에** 옛 좌표를 떠 놔야 합니다.
+   *   CopyFrom 이후에는 이전 셀을 알 수 없어 격자에 유령 엔트리가 남습니다.
+   *   같은 셀 안에서의 이동이면 MoveSector 가 알아서 아무것도 하지 않습니다.
+   */
+  const float oldX = player->GetPosInfo()->x();
+  const float oldY = player->GetPosInfo()->y();
+
   // 위치 갱신 (서버 검증 추가 가능)
   player->GetPosInfo()->CopyFrom(pkt.posinfo());
+
+  MoveSector(player->GetObjectId(), oldX, oldY, player->GetPosInfo()->x(),
+             player->GetPosInfo()->y());
 
   // 주변 브로드캐스팅
   Protocol::S_MOVE movePkt;
@@ -321,28 +347,122 @@ void GameRoom::Broadcast(SendBufferRef sendBuffer) {
   }
 }
 
-// 간단한 Sector Grid (거리 기반으로 타협)
-// x, y 좌표를 1000 단위로 나누어 인덱싱
-int32 GameRoom::GetSectorIndex(float x, float y) {
-  // 예시: 1000 단위 구역
-  return static_cast<int32>(x / 1000.f) + static_cast<int32>(y / 1000.f) * 1000;
+/*
+ * ─── Uniform Grid AOI [AOI-1 / 2026-09-06] ──────────────────────────────────
+ *
+ * 이전 구현은 이름만 Sector 였고 실제로는 _players 전체를 순회했습니다.
+ * 이제 좌표를 kCellSize 격자로 나눠 셀별 집합을 유지하고, 질의 시
+ * 반경이 걸치는 셀만 훑습니다.
+ *
+ * ⚠️ 반환 결과는 이전과 동일합니다. 셀로 후보를 좁힌 뒤에도
+ *    정확한 거리 검사를 그대로 수행하기 때문입니다. (가속 구조일 뿐)
+ */
+
+int32 GameRoom::SectorCoord(float v) {
+  // [버그 수정] static_cast<int32> 는 0 방향 절단이라 -500 과 +500 이 모두 0 이
+  // 됩니다. floor 를 써야 음수 영역에서도 격자 간격이 균일해집니다.
+  return static_cast<int32>(std::floor(v / kCellSize));
+}
+
+int64 GameRoom::MakeSectorKey(int32 sx, int32 sy) {
+  // 이전의 sx + sy * 1000 은 |sx| 가 500 을 넘으면 다른 셀과 값이 겹칩니다.
+  // 상위 32비트에 sx, 하위 32비트에 sy 를 담아 충돌을 없앱니다.
+  return (static_cast<int64>(sx) << 32) |
+         static_cast<int64>(static_cast<uint32>(sy));
+}
+
+int64 GameRoom::GetSectorIndex(float x, float y) {
+  return MakeSectorKey(SectorCoord(x), SectorCoord(y));
+}
+
+void GameRoom::AddToSector(uint64 objectId, float x, float y) {
+  _sectors[GetSectorIndex(x, y)].insert(objectId);
+}
+
+void GameRoom::RemoveFromSector(uint64 objectId, float x, float y) {
+  const int64 key = GetSectorIndex(x, y);
+  auto it = _sectors.find(key);
+  if (it == _sectors.end())
+    return;
+
+  it->second.erase(objectId);
+  if (it->second.empty())
+    _sectors.erase(it); // 빈 셀은 들고 있지 않는다 (맵이 무한히 자라는 것 방지)
+}
+
+void GameRoom::MoveSector(uint64 objectId, float oldX, float oldY, float newX,
+                          float newY) {
+  const int64 from = GetSectorIndex(oldX, oldY);
+  const int64 to = GetSectorIndex(newX, newY);
+  if (from == to)
+    return; // 같은 셀 안에서의 이동은 자료구조를 건드릴 필요가 없다
+
+  RemoveFromSector(objectId, oldX, oldY);
+  _sectors[to].insert(objectId);
 }
 
 std::vector<PlayerRef> GameRoom::GetAdjacentSectorPlayers(float x, float y) {
   std::vector<PlayerRef> adjacentPlayers;
-  // 지금은 간단한 O(N) 거리 비교로 대체 (Sector 자료구조 맵핑 전)
-  // 반경 2000 안의 유저를 반환
-  const float AOI_RADIUS_SQ = 2000.0f * 2000.0f;
 
-  for (auto &pair : _players) {
-    float dx = pair.second->GetPosInfo()->x() - x;
-    float dy = pair.second->GetPosInfo()->y() - y;
-    if (dx * dx + dy * dy <= AOI_RADIUS_SQ) {
-      adjacentPlayers.push_back(pair.second);
+  const float AOI_RADIUS_SQ = kAoiRadius * kAoiRadius;
+  const int32 cx = SectorCoord(x);
+  const int32 cy = SectorCoord(y);
+
+  // 통계: 그리드가 없었다면 _players 전체와 비교했어야 한다
+  _aoiStats.queryCount += 1;
+  _aoiStats.naiveCompareCount += _players.size();
+
+  for (int32 sx = cx - kCellSpan; sx <= cx + kCellSpan; sx++) {
+    for (int32 sy = cy - kCellSpan; sy <= cy + kCellSpan; sy++) {
+      _aoiStats.cellVisitCount += 1;
+
+      auto it = _sectors.find(MakeSectorKey(sx, sy));
+      if (it == _sectors.end())
+        continue; // 빈 셀은 즉시 건너뛴다 — 여기서 비용이 줄어든다
+
+      for (uint64 objectId : it->second) {
+        auto pit = _players.find(objectId);
+        if (pit == _players.end())
+          continue; // 셀과 _players 가 어긋난 경우 (방어)
+
+        const PlayerRef &player = pit->second;
+        const float dx = player->GetPosInfo()->x() - x;
+        const float dy = player->GetPosInfo()->y() - y;
+
+        _aoiStats.compareCount += 1; // 실제 거리 비교 1회
+
+        if (dx * dx + dy * dy <= AOI_RADIUS_SQ)
+          adjacentPlayers.push_back(player);
+      }
     }
   }
 
   return adjacentPlayers;
+}
+
+void GameRoom::PrintAoiStats() const {
+  if (_aoiStats.queryCount == 0)
+    return;
+
+  const double avgGrid =
+      static_cast<double>(_aoiStats.compareCount) / _aoiStats.queryCount;
+  const double avgNaive =
+      static_cast<double>(_aoiStats.naiveCompareCount) / _aoiStats.queryCount;
+
+  std::ostringstream oss; // 한 줄로 조립해 출력 (멀티스레드 인터리빙 방지)
+  oss << "[AOI] queries=" << _aoiStats.queryCount
+      << "  compares(grid)=" << _aoiStats.compareCount
+      << "  compares(naive)=" << _aoiStats.naiveCompareCount
+      << "  avg/query: " << avgGrid << " vs " << avgNaive;
+  if (avgGrid > 0.0)
+    oss << "  (x" << (avgNaive / avgGrid) << " 감소)";
+  oss << "  cells=" << _aoiStats.cellVisitCount
+      << "  occupied=" << _sectors.size() << "\n";
+
+  // 본문은 한 번의 << 로 내보내 인터리빙을 막고, flush 는 따로 겁니다.
+  // flush 가 없으면 stdout 이 파일/파이프로 리다이렉트됐을 때 블록 버퍼링에
+  // 걸려 로그가 보이지 않습니다 (2026-08-10 로그의 stdout 소실과 같은 원인).
+  std::cout << oss.str() << std::flush;
 }
 
 void GameRoom::BroadcastToAdjacentSectors(float x, float y,
