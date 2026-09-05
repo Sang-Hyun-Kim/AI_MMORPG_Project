@@ -56,6 +56,27 @@ namespace DummyScenario
 	inline std::atomic<int32> GRecvY{ 0 };
 	inline std::atomic<int32> GRecvZ{ 0 };
 
+	/*
+	 * [2026-09-06] GMoveAcked — "보냈다"와 "서버가 처리했다"를 구분하기 위한 신호
+	 *
+	 * [무엇이 문제였나]
+	 *   Move 시나리오는 S_ENTER_GAME 을 받자마자 C_MOVE 를 1회 보내고 800ms 뒤 끊었습니다.
+	 *   그런데 서버는 S_ENTER_GAME 을 **먼저 보내고**(선발송) GameRoom::Enter 를 큐에 넣습니다.
+	 *   Enter 가 아직 실행되지 않았으면 Handle_C_MOVE 의 player->GetRoom() 이 nullptr 이라
+	 *   **아무 로그 없이 return false** 로 버려집니다.
+	 *   결과: 클라이언트는 "C_MOVE sent" 를 찍었는데 DB 에는 (0,0,0) 이 저장되고,
+	 *   이어지는 verify 시나리오가 거짓 실패했습니다.
+	 *
+	 * [해결]
+	 *   서버가 브로드캐스트하는 S_MOVE 를 **자기 자신도 받는다**는 점을 이용합니다
+	 *   (이동한 본인은 언제나 자기 AOI 안에 있음). 그 에코를 받을 때까지 재전송하고,
+	 *   받은 뒤에 끊습니다. 즉 판정 기준이 "송신"에서 "서버 반영 확인"으로 바뀝니다.
+	 *
+	 * ⚠️ 이 플래그를 지우고 다시 "1회 송신 후 대기"로 되돌리지 마십시오.
+	 *    입장 직후 구간에서 간헐적으로 이동이 유실되어 verify 가 거짓 실패합니다.
+	 */
+	inline std::atomic<bool>  GMoveAcked{ false };
+
 	inline const char* ToString(Mode m)
 	{
 		switch (m)

@@ -117,15 +117,46 @@ bool Handle_S_ENTER_GAME(PacketSessionRef &session,
     movePkt.mutable_posinfo()->set_y(DummyScenario::GTargetY);
     movePkt.mutable_posinfo()->set_z(DummyScenario::GTargetZ);
     movePkt.mutable_posinfo()->set_yaw(0.0f);
-    session->Send(ClientPacketHandler::MakeSendBuffer(movePkt));
-
-    std::cout << "[DummyClient] C_MOVE sent -> (" << DummyScenario::GTargetX
-              << ", " << DummyScenario::GTargetY << ", " << DummyScenario::GTargetZ
-              << ")" << std::endl;
-
-    // 서버가 이동을 처리(GameRoom Job 직렬화)할 시간을 준 뒤 끊습니다.
+    /*
+     * [2026-09-06 수정] 1회 송신 후 고정 대기 → **에코 확인까지 재전송**
+     *
+     * 이전: Send 1회 → 800ms sleep → Disconnect.
+     *   서버가 S_ENTER_GAME 을 선발송한 뒤 GameRoom::Enter 를 큐에 넣기 때문에,
+     *   이 시점의 C_MOVE 는 player->GetRoom() 이 아직 nullptr 이라
+     *   Handle_C_MOVE 에서 **로그 없이 버려질 수 있습니다.**
+     *   그러면 DB 에 (0,0,0) 이 저장되고 이후 verify 가 거짓 실패합니다.
+     *
+     * 이후: S_MOVE 에코(=서버가 실제로 반영했다는 증거)를 받을 때까지 재전송합니다.
+     */
     std::thread([session]() {
-      std::this_thread::sleep_for(std::chrono::milliseconds(800));
+      Protocol::C_MOVE movePkt;
+      movePkt.mutable_posinfo()->set_x(DummyScenario::GTargetX);
+      movePkt.mutable_posinfo()->set_y(DummyScenario::GTargetY);
+      movePkt.mutable_posinfo()->set_z(DummyScenario::GTargetZ);
+      movePkt.mutable_posinfo()->set_yaw(0.0f);
+
+      // 최대 20회(약 4초) 재시도. 입장 직후의 짧은 창만 넘기면 되므로 충분합니다.
+      for (int32 attempt = 1; attempt <= 20; attempt++) {
+        if (DummyScenario::GMoveAcked.load() || session->IsConnected() == false)
+          break;
+
+        session->Send(ClientPacketHandler::MakeSendBuffer(movePkt));
+        if (attempt == 1) {
+          std::cout << "[DummyClient] C_MOVE sent -> ("
+                    << DummyScenario::GTargetX << ", " << DummyScenario::GTargetY
+                    << ", " << DummyScenario::GTargetZ << ")" << std::endl;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+      }
+
+      if (DummyScenario::GMoveAcked.load())
+        std::cout << "[DummyClient] C_MOVE ACKED (server applied)" << std::endl;
+      else
+        std::cout << "[DummyClient] C_MOVE NOT acked — 서버가 반영하지 않았습니다"
+                  << std::endl;
+
+      // 반영 확인 후에도 서버의 Leave 스냅샷 저장이 돌 시간을 조금 줍니다.
+      std::this_thread::sleep_for(std::chrono::milliseconds(300));
       if (session->IsConnected())
         session->Disconnect(L"Scenario Move Complete");
       DummyScenario::GFinished.store(true);
@@ -172,8 +203,28 @@ bool Handle_S_DESPAWN(PacketSessionRef &session, Protocol::S_DESPAWN &pkt) {
   return true;
 }
 bool Handle_S_MOVE(PacketSessionRef &session, Protocol::S_MOVE &pkt) {
-  // std::cout << "[DummyClient] Echo S_MOVE Received - Name: " <<
-  // pkt.info().name() << ", Level: " << pkt.info().level() << std::endl;
+  /*
+   * [2026-09-06] Move 시나리오의 "서버 반영 확인" 신호.
+   *
+   * 서버는 이동을 AOI 반경으로 브로드캐스트하는데, 이동한 본인은 언제나 자기
+   * 반경 안에 있으므로 **자기 이동의 에코를 자신도 받습니다.**
+   * 이 에코가 곧 "서버가 HandleMove 를 실행해 상태를 갱신했다"는 증거이므로,
+   * 이것을 받아야 비로소 이동이 성립했다고 판정합니다.
+   */
+  if (DummyScenario::GMode == DummyScenario::Mode::Move &&
+      DummyScenario::GMoveAcked.load() == false) {
+    const auto &pos = pkt.posinfo();
+    const float dx = std::fabs(pos.x() - DummyScenario::GTargetX);
+    const float dy = std::fabs(pos.y() - DummyScenario::GTargetY);
+    const float dz = std::fabs(pos.z() - DummyScenario::GTargetZ);
+
+    // 목표 좌표와 일치하는 에코만 인정합니다.
+    // (다른 플레이어의 이동 브로드캐스트를 자기 것으로 오인하지 않기 위함)
+    if (dx <= DummyScenario::GTolerance && dy <= DummyScenario::GTolerance &&
+        dz <= DummyScenario::GTolerance) {
+      DummyScenario::GMoveAcked.store(true);
+    }
+  }
   return true;
 }
 bool Handle_S_CHAT(PacketSessionRef &session, Protocol::S_CHAT &pkt) {
