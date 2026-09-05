@@ -106,7 +106,8 @@ Docs/QA_TestPlan_*.md
 # Environment Variables
 Infra/.env
 Docs/AICommunicationDocs/*.md
-
+Docs/AICommunicationDocs/PF/*.pdf
+Docs/AICommunicationDocs/PF/*.md
 Docs/AICommunicationDocs/*.txt
 Backup/*
 # Plans, Deployment & Handover Docs (로컬 전용 - 원격 미포함)
