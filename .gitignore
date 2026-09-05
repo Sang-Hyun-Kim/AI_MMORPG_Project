@@ -125,3 +125,9 @@ Server/GameServer/Config.json
 
 # Phase 4 배포 번들 (생성물)
 DeployBundle/
+
+# UE 플러그인 (외부 배포물 — 443MB)
+#   VibeUE 등 에디터 자동화 플러그인은 프로젝트 소스가 아니라 외부에서 받아오는
+#   산출물입니다. 커밋하면 저장소가 그만큼 영구히 커지므로 제외합니다.
+#   새 환경에서는 플러그인을 다시 내려받아 이 경로에 두면 됩니다.
+Client/AMC1/Plugins/
