@@ -37,8 +37,18 @@ builder.WebHost.UseUrls(urls);
 // Configure MySQL (Pomelo EntityFrameworkCore)
 // 기본값은 C++ GameServer의 Config.json과 동일한 좌표(127.0.0.1:3307 / mmorpg_db)입니다. [F3]
 // 두 서버가 서로 다른 DB를 보면 C#이 만든 캐릭터를 C++가 찾지 못합니다.
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Server=127.0.0.1;Port=3307;Database=mmorpg_db;User Id=root;Password=root;";
+/*
+ * [2026-09-06] 하드코딩 자격증명 폴백 제거 (저장소 공개 대비)
+ *   변경 전: 설정이 비어 있으면 root/root 연결 문자열로 조용히 대체했습니다.
+ *   변경 후: 설정이 없으면 즉시 실패시킵니다. 자격증명은
+ *     appsettings.Production.json(저장소 미추적) 또는 환경 변수
+ *     ConnectionStrings__DefaultConnection 으로 주입하십시오.
+ */
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+    throw new InvalidOperationException(
+        "ConnectionStrings:DefaultConnection 이 설정되지 않았습니다. " +
+        "환경 변수 ConnectionStrings__DefaultConnection 또는 appsettings.Production.json 을 지정하십시오.");
 /*
  * [2026-09-04] PendingModelChangesWarning 억제 — 결함 C-7 (표시 문제)
  *
