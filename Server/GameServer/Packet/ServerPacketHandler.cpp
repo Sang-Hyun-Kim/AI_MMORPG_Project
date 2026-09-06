@@ -1,7 +1,6 @@
 #include "ServerPacketHandler.h"
 #include <iostream>
 #include <charconv>	// [2026-09-04] 티켓 값 안전 파싱(ParseUInt64)
-#include <cctype>	// [2026-09-04] 백도어 티켓 접미사 숫자 판별
 #include "GameSession.h"
 #include "GameRoom.h"
 #include "RedisManager.h"
@@ -34,28 +33,6 @@ namespace
 		return true;
 	}
 
-	/*
-	 * ExtractTrailingNumber
-	 * 테스트 백도어 전용. 티켓 문자열 끝의 연속된 숫자를 PlayerId로 해석합니다.
-	 *   "dummy_1024"  -> 1024
-	 *   "dummyticket" -> defaultValue (숫자 없음)
-	 * 숫자가 uint64 범위를 넘으면 defaultValue를 돌려줍니다.
-	 */
-	uint64 ExtractTrailingNumber(const std::string& text, uint64 defaultValue)
-	{
-		size_t pos = text.size();
-		while (pos > 0 && std::isdigit(static_cast<unsigned char>(text[pos - 1])))
-			pos--;
-
-		if (pos == text.size())
-			return defaultValue;	// 끝이 숫자가 아님
-
-		uint64 parsed = 0;
-		if (ParseUInt64(text.substr(pos), parsed) == false || parsed == 0)
-			return defaultValue;
-
-		return parsed;
-	}
 }
 
 bool Handle_INVALID(PacketSessionRef& session, std::span<std::byte> buffer)
@@ -67,37 +44,10 @@ bool Handle_C_LOGIN(PacketSessionRef& session, Protocol::C_LOGIN& pkt)
 	std::wcout << L"[ServerPacketHandler] C_LOGIN Received! Ticket: " << pkt.ticket().c_str() << std::endl;
 
 	std::string ticket = pkt.ticket();
-	std::string lowerTicket = ticket;
-	std::transform(lowerTicket.begin(), lowerTicket.end(), lowerTicket.begin(), ::tolower);
 
 	if (GRedisManager && GRedisManager->GetRedis())
 	{
 		std::string key = "Ticket:User:" + ticket;
-
-		/*
-		 * 포트폴리오 테스트용 백도어 (대소문자 무관 DummyTicket, dummy_ 모두)
-		 *
-		 * [2026-09-04 승격] 과거에는 무조건 "1"을 넣었기 때문에 어떤 더미 티켓으로
-		 *   접속해도 같은 신원이 되어 다중 세션 테스트가 불가능했습니다.
-		 *   이제 티켓 접미사의 숫자를 PlayerId로 해석합니다.
-		 *     dummy_1024   → PlayerId 1024
-		 *     DummyTicket  → PlayerId 1 (숫자가 없으면 기본값)
-		 *   덕분에 C# 백엔드 없이도 DummyClient만으로 신원 결속 경로를 검증할 수 있습니다.
-		 *
-		 * [존치 사유] CLAUDE.md는 이 백도어를 "Production 전 반드시 삭제"로 명시합니다.
-		 *   그 지침은 유효하며, 다만 지금은 Production이 아닙니다.
-		 *   이 경로를 지우면 C# 백엔드가 유일한 진입 수단이 되어, 데모 당일 C#이
-		 *   기동하지 못할 경우 게임에 들어갈 방법이 사라집니다(폴백 소실).
-		 *   정상 경로는 C# 로그인이며 이 백도어는 비상구로만 남깁니다.
-		 *   ⚠️ Production 이행 시 이 블록 전체를 삭제할 것. (AI_HANDOFF.md 추적 항목)
-		 */
-		if (lowerTicket.starts_with("dummy"))
-		{
-			uint64 backdoorPlayerId = ExtractTrailingNumber(lowerTicket, /*defaultValue=*/1);
-			GRedisManager->GetRedis()->set(key, std::to_string(backdoorPlayerId));
-			std::wcout << L"[ServerPacketHandler] Test Ticket Auto-Registered in Redis: "
-					   << ticket.c_str() << L" -> PlayerId " << backdoorPlayerId << std::endl;
-		}
 
 		// Lua Script 대신 간편하게 Transaction(GET+DEL)을 사용하는 예시
 		auto val = GRedisManager->GetRedis()->get(key);
@@ -149,21 +99,22 @@ bool Handle_C_LOGIN(PacketSessionRef& session, Protocol::C_LOGIN& pkt)
 	else
 	{
 		/*
-		 * Redis 오프라인 우회 (개발용) — CLAUDE.md에 명시된 추적 항목.
-		 * [2026-09-04] 이 경로도 신원을 확정해야 C_ENTER_GAME을 통과할 수 있으므로,
-		 *   티켓 접미사 숫자를 PlayerId로 삼습니다. Redis가 있을 때와 동일한 규약입니다.
-		 * ⚠️ Production 이행 시 이 분기 전체를 삭제하고 정상 Redis 검증만 남길 것.
+		 * [2026-09-06] Redis 오프라인 우회를 제거했습니다.
+		 *
+		 * 변경 전: Redis 가 없으면 티켓 접미사 숫자를 PlayerId 로 삼아 **무조건 승인**했습니다.
+		 *   저장소 공개 시 이 규칙이 그대로 노출되므로, 서버가 문자열 패턴을 신뢰하는
+		 *   경로를 남겨 둘 수 없습니다.
+		 * 변경 후: 티켓을 검증할 수단이 없으면 **로그인을 거부**합니다.
+		 *   Redis 는 인증에 필수 구성요소이며, 없으면 신원을 확정할 방법이 없습니다.
+		 *
+		 * 🚨 이 분기를 "테스트 편의"를 이유로 되살리지 마십시오.
+		 *   검증용 티켓은 DummyClient 가 Redis 에 직접 등록합니다(C# 백엔드와 동일 규약).
+		 *   서버는 이제 Redis 검증이라는 **단일 경로**만 가집니다.
 		 */
-		uint64 fallbackPlayerId = ExtractTrailingNumber(lowerTicket, /*defaultValue=*/1);
-		std::static_pointer_cast<GameSession>(session)->SetPlayerId(fallbackPlayerId);
-
-		std::wcout << L"[ServerPacketHandler] Redis is offline. Bypassing login validation for testing."
-				   << L" -> PlayerId " << fallbackPlayerId << std::endl;
-		Protocol::S_LOGIN loginPkt;
-		loginPkt.set_success(true);
-		SendBufferRef sendBuffer = ServerPacketHandler::MakeSendBuffer(loginPkt);
-		session->Send(sendBuffer);
-		return true;
+		std::wcout << L"Login Failed: Redis unavailable — cannot validate ticket ("
+				   << ticket.c_str() << L")" << std::endl;
+		session->Disconnect(L"Auth Backend Unavailable");
+		return false;
 	}
 	return false;
 }

@@ -7,6 +7,7 @@
 
 #include "ClientPacketHandler.h"
 #include "DummyScenario.h"
+#include "RedisManager.h"
 
 #include <atomic>
 static std::atomic<int32> GTicketIdCounter = 0;
@@ -33,9 +34,42 @@ public:
 		 *   (세션이 여러 개면 PlayerId를 1씩 늘려 서로 다른 캐릭터가 되게 합니다.)
 		 */
 		const uint64 playerId = DummyScenario::GPlayerId + static_cast<uint64>(GTicketIdCounter.fetch_add(1));
+		const std::string ticket = "dummy_" + std::to_string(playerId);
+
+		/*
+		 * [2026-09-06] 티켓을 Redis 에 직접 등록한 뒤 로그인합니다.
+		 *
+		 * 변경 전: 서버에 "dummy" 접두사 티켓을 무조건 승인하는 백도어가 있어서
+		 *   클라이언트는 문자열만 보내면 됐습니다. 저장소 공개를 앞두고 그 백도어를
+		 *   제거했으므로(ServerPacketHandler.cpp), 이제 티켓이 Redis 에 실제로
+		 *   존재해야 로그인이 성립합니다.
+		 * 변경 후: C# 백엔드가 하는 일과 **동일한 규약**으로 여기서 티켓을 발급합니다.
+		 *   키 형식 `Ticket:User:<ticket>` → 값 `<PlayerId>` 는 서버의 GET 과 짝입니다.
+		 *   서버는 읽은 뒤 DEL 하므로 1회용입니다.
+		 *
+		 * 🚨 서버가 문자열 패턴을 신뢰하지 않게 된 것이 이 변경의 핵심입니다.
+		 *   이 등록은 Redis 접근 권한이 있어야 가능하므로 외부에서 흉내낼 수 없습니다.
+		 */
+		if (GRedisManager && GRedisManager->GetRedis())
+		{
+			try
+			{
+				GRedisManager->GetRedis()->set("Ticket:User:" + ticket, std::to_string(playerId));
+			}
+			catch (const std::exception& e)
+			{
+				std::cout << "[DummyClient] Ticket registration failed: " << e.what() << std::endl;
+				return;		// 로그인 시도조차 하지 않습니다 (서버가 거부할 것이 자명)
+			}
+		}
+		else
+		{
+			std::cout << "[DummyClient] Redis unavailable — cannot issue ticket. Aborting login." << std::endl;
+			return;
+		}
 
 		Protocol::C_LOGIN loginPkt;
-		loginPkt.set_ticket("dummy_" + std::to_string(playerId));
+		loginPkt.set_ticket(ticket);
 		Send(ClientPacketHandler::MakeSendBuffer(loginPkt));
 	}
 
@@ -96,6 +130,8 @@ struct DummyClientArgs
 	uint16       port = 7777;
 	int32        sessionCount = 1;		// [2026-09-04] 기본을 5 -> 1 로 낮춤 (부하 유발 방지)
 	int32        timeoutSeconds = 20;	// 시나리오가 끝나지 않아도 이 시간 뒤 종료
+	// [2026-09-06] 티켓 발급용 Redis. 서버의 백도어 제거에 따라 필수가 되었습니다.
+	std::string  redisUri = "tcp://127.0.0.1:6379";
 };
 
 static DummyClientArgs ParseArgs(int argc, char* argv[])
@@ -110,6 +146,10 @@ static DummyClientArgs ParseArgs(int argc, char* argv[])
 		{
 			const std::string value = arg.substr(4);
 			args.ip.assign(value.begin(), value.end()); // ASCII 점 표기 IPv4만 사용하므로 단순 확장으로 충분
+		}
+		else if (arg.starts_with("-redis="))
+		{
+			args.redisUri = arg.substr(7);
 		}
 		else if (arg.starts_with("-port="))
 		{
@@ -193,6 +233,21 @@ int main(int argc, char* argv[])
 	const DummyClientArgs args = ParseArgs(argc, argv);
 
 	ClientPacketHandler::Init();
+
+	/*
+	 * [2026-09-06] Redis 접속 — 티켓 발급에 필요합니다.
+	 *   서버의 로그인 백도어를 제거했으므로, 이제 티켓이 Redis 에 실재해야만
+	 *   로그인이 성립합니다. 접속하지 못하면 시험을 진행할 수 없으므로 즉시 종료합니다.
+	 *   (조용히 우회하던 과거 동작이 바로 그 백도어의 원인이었습니다.)
+	 */
+	GRedisManager = std::make_shared<RedisManager>();
+	if (GRedisManager->Connect(args.redisUri) == false)
+	{
+		std::cout << "[DummyClient] Redis connect failed: " << args.redisUri << std::endl;
+		std::cout << "              -redis=tcp://<host>:<port> 로 지정하거나 Redis 를 기동하십시오." << std::endl;
+		return 1;
+	}
+	std::cout << "[DummyClient] Redis connected: " << args.redisUri << std::endl;
 
 	// 서버가 켜질 때까지 대기
 	std::this_thread::sleep_for(std::chrono::seconds(1));
