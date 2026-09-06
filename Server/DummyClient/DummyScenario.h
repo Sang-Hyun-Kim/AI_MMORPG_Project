@@ -36,7 +36,7 @@ namespace DummyScenario
 
 	// ── main()이 채우는 설정 ────────────────────────────────────────────────
 	inline Mode  GMode = Mode::Idle;
-	inline uint64 GPlayerId = 1;			// 백도어 티켓 dummy_<GPlayerId> 로 신원을 고정
+	inline uint64 GPlayerId = 1;			// Redis 에 등록하는 티켓 dummy_<GPlayerId> 로 신원을 고정
 	inline float GTargetX = 0.f;			// Move 모드에서 이동할 좌표
 	inline float GTargetY = 0.f;
 	inline float GTargetZ = 0.f;

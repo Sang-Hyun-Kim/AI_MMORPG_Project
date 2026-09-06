@@ -56,7 +56,8 @@ JobTask GameSession::LoadPlayerTask(uint64 playerId) {
       /*
        * 신규 캐릭터: 해당 PlayerId의 행이 아직 없습니다.
        * C# 백엔드를 거쳐 들어온 경우에는 로그인 시점에 이미 행이 만들어지므로
-       * 이 경로는 주로 테스트 백도어(dummy_1024)로 들어왔을 때 사용됩니다.
+       * 이 경로는 검증 도구(DummyClient)가 발급한 티켓으로 들어왔을 때 주로 쓰입니다.
+       * 티켓 발급에는 Redis 접근 권한이 필요하므로 외부에서 임의로 탈 수 없습니다.
        * 기본값으로 행을 만들고 그 PlayerId로 입장시킵니다.
        */
       loadedData->name = "Player_" + std::to_string(playerId);
