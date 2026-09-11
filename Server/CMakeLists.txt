@@ -19,7 +19,15 @@ find_package(absl CONFIG REQUIRED)
 find_package(redis++ CONFIG REQUIRED)
 find_package(unofficial-libmysql CONFIG REQUIRED)
 
+# [TD-01] ctest 로 테스트를 실행할 수 있게 합니다 (ctest -C Debug --output-on-failure)
+enable_testing()
+
 # 하위 디렉토리 추가
 add_subdirectory(ServerCore)
 add_subdirectory(GameServer)
 add_subdirectory(DummyClient)
+# [TD-01] LoggerSelfTest — 게임 서버 빌드와 독립된 로거 검증 도구.
+#   테스트 자료는 저장소에 올리지 않으므로(.gitignore), 폴더가 있는 환경에서만 추가한다.
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Tests/CMakeLists.txt")
+    add_subdirectory(Tests)
+endif()

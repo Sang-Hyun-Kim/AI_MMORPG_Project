@@ -80,3 +80,4 @@ USING_SHARED_PTR(JobQueue);
 #include "DBConnectionPool.h"
 #include "GlobalQueue.h"
 #include "JobTimer.h"
+#include "Logger.h" // [TD-01] MLOG_* 매크로를 서버 전역에서 쓰기 위해 PCH에 포함

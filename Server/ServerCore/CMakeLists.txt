@@ -24,6 +24,7 @@ add_library(ServerCore STATIC
     Protocol.pb.cc
     ConfigManager.cpp
     DBConnectionPool.cpp
+    Logger.cpp            # [TD-01] 구조적 로그 시스템
 )
 
 # 인클루드 경로 설정 (현재 디렉토리)

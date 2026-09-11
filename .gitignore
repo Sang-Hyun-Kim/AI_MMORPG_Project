@@ -163,3 +163,19 @@ Docs/TechDebt_Master_Plan.md
 /CLAUDE.md
 /.agents/
 /.cursorrules
+
+# [2026-09-11 / TD-01] 로거 산출물
+#   Logs/                서버·도구가 실행 폴더에 만드는 로그 파일 (실행마다 새 파일, 14일 보존)
+#   LoggerSelfTest_out/  LoggerSelfTest 가 케이스별로 만드는 검증용 로그
+#   (테스트 소스 Server/Tests/ 도 추적하지 않음 — Server/CMakeLists.txt 는 폴더가 있을 때만 추가)
+Logs/
+LoggerSelfTest_out/
+
+# [2026-09-11 / TD-01] 테스트 증거·계측 결과 — 로컬 전용 (사용자 결정)
+#   빌드 로그에 로컬 절대경로(D:\...)가 들어가므로 위 2026-09-06 정책과 같은 이유로 제외합니다.
+#   Docs/Benchmarks/ 도 추적하지 않습니다(사용자 결정). 새 PC·EC2 에는 필요 시 수동 복사.
+Docs/TestRuns/
+Docs/Benchmarks/
+
+# 테스트 자료도 업로드 하지 않겠다.
+/Server/Tests/*
