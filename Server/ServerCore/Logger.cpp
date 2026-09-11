@@ -52,7 +52,8 @@ namespace
 		Sync,
 	};
 
-	constexpr const char* kLevelNames[] = { "TRACE", "INFO ", "WARN ", "ERROR", "OFF  " };
+	constexpr const char* kLevelNames[] = { "TRACE", "INFO ", "WARN ", "ERROR", "OFF  " };  // 레코드용(폭 5 정렬)
+	constexpr const char* kLevelNamesPlain[] = { "TRACE", "INFO", "WARN", "ERROR", "OFF" };  // 문장 안에 넣을 때
 	constexpr const char* kCategoryNames[] = { "Sys",  "Config", "Net",   "Session", "Login", "Room",
 											   "Aoi",  "Db",     "Redis", "Dummy",   "Test" };
 	static_assert(std::size(kCategoryNames) == static_cast<std::size_t>(LogCategory::Count),
@@ -953,8 +954,8 @@ void Logger::Configure(const LogSettings& settings) noexcept
 	const Mode mode = gMode.load();
 	std::string msg = std::string("Log configured: mode=") + (mode == Mode::Async ? "async" : "sync") +
 					  " file=" + (s.fileEnabled.load() ? "on" : "off") +
-					  " consoleLevel=" + kLevelNames[static_cast<std::size_t>(settings.consoleLevel)] +
-					  " fileLevel=" + kLevelNames[static_cast<std::size_t>(settings.fileLevel)];
+					  " consoleLevel=" + kLevelNamesPlain[static_cast<std::size_t>(settings.consoleLevel)] +
+					  " fileLevel=" + kLevelNamesPlain[static_cast<std::size_t>(settings.fileLevel)];
 	Submit(LogLevel::Info, LogCategory::Sys, std::source_location::current(), CaptureTimestamp(), std::move(msg));
 }
 

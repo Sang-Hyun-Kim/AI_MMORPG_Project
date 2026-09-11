@@ -227,6 +227,10 @@ static DummyClientArgs ParseArgs(int argc, char* argv[])
 
 int main(int argc, char* argv[])
 {
+	// [TD-01] 도구는 결과 블록(std::cout)과 순서가 섞이지 않도록 동기 모드로 씁니다.
+	Logger::SetThreadName("MAIN");
+	Logger::Init({ .programName = "DummyClient", .async = false });
+
 	// 메모리 누수 탐지 (종료 시 덤프)
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 
@@ -270,6 +274,7 @@ int main(int argc, char* argv[])
 	{
 		GThreadManager->Launch([=](std::stop_token stopToken)
 			{
+				Logger::SetThreadName("IOCP", i + 1);
 				while (!stopToken.stop_requested())
 				{
 					service->GetIocpCore()->Dispatch(10);

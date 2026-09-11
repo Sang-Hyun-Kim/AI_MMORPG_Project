@@ -24,10 +24,13 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD dwCtrlType) {
   case CTRL_C_EVENT:
   case CTRL_CLOSE_EVENT:
   case CTRL_BREAK_EVENT:
+    Logger::SetThreadName("CTRL");
     std::cout
         << "\n[System] Shutdown signal received. Preparing graceful shutdown..."
         << std::endl;
     GIsRunning = false;
+    // [TD-01] CLOSE 이벤트는 핸들러 반환 직후 OS가 프로세스를 종료하므로 큐를 비웁니다.
+    Logger::Flush();
     return TRUE; // 자체 처리했음을 OS에 알림
   default:
     return FALSE;
@@ -35,6 +38,10 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD dwCtrlType) {
 }
 
 int main() {
+  // [TD-01] 로거를 가장 먼저 켭니다. 설정 로드 실패 로그도 파일에 남기기 위함입니다.
+  Logger::SetThreadName("MAIN");
+  Logger::Init({ .programName = "GameServer" });
+
   // 종료 시그널 핸들러 등록
   if (!SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE)) {
     std::cout << "[Warning] Could not set control handler" << std::endl;
@@ -49,6 +56,9 @@ int main() {
   if (!GConfigManager->Init("Config.json")) {
     std::cout << "Failed to load Config.json. Using defaults." << std::endl;
   }
+
+  // [TD-01] Config.json 의 "Log" 섹션 적용 (없으면 기본값 유지)
+  Logger::Configure(GConfigManager->logSettings);
 
   GRedisManager = std::make_shared<RedisManager>();
   if (!GRedisManager->Connect(GConfigManager->databaseConfig.redisString)) {
@@ -82,6 +92,7 @@ int main() {
 
   // Session Sweeper Thread (1초 주기, C++20 jthread + stop_token)
   GThreadManager->Launch([service](std::stop_token stopToken) {
+    Logger::SetThreadName("SWEEP");
     while (!stopToken.stop_requested()) {
       service->SweepSessions();
       std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -90,6 +101,7 @@ int main() {
 
   for (int32 i = 0; i < 5; i++) {
     GThreadManager->Launch([=](std::stop_token stopToken) {
+      Logger::SetThreadName("IOCP", i + 1);
       while (!stopToken.stop_requested()) {
         service->GetIocpCore()->Dispatch(10);
       }

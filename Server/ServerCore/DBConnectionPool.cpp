@@ -152,7 +152,8 @@ bool DBConnectionPool::Connect(int32 connectionCount, const std::string& host, i
     // Worker Threads 시작
     for (int32 i = 0; i < connectionCount; i++)
     {
-        _workerThreads.push_back(std::thread([this]() { WorkerThread(); }));
+        // [TD-01] 워커에 이름(DB-1..N)을 붙여 어느 워커가 코루틴을 재개했는지 로그로 구분합니다.
+        _workerThreads.push_back(std::thread([this, i]() { Logger::SetThreadName("DB", i + 1); WorkerThread(); }));
     }
 
     return true;

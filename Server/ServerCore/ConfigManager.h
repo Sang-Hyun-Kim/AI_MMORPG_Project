@@ -2,6 +2,8 @@
 #include <string>
 #include <memory>
 
+#include "Logger.h" // [TD-01] LogSettings
+
 // 서버 설정 정보 (포트 번호, 최대 접속 세션 수 등)
 struct ServerConfig
 {
@@ -51,4 +53,5 @@ public:
 public:
     ServerConfig serverConfig;     // 파싱된 서버 설정
     DatabaseConfig databaseConfig; // 파싱된 DB 설정
+    LogSettings logSettings;       // [TD-01] 파싱된 로그 설정 (섹션이 없으면 기본값)
 };

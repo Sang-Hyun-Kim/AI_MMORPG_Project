@@ -46,6 +46,16 @@ bool ConfigManager::Init(const std::string& path)
             databaseConfig.redisString = j["Database"].value("Redis", "");
         }
 
+        // [TD-01] 로그 설정(Log 섹션). 없으면 LogSettings 기본값을 그대로 둡니다.
+        if (j.contains("Log"))
+        {
+            auto& logJson = j["Log"];
+            logSettings.async = logJson.value("Async", true);
+            logSettings.fileEnabled = logJson.value("File", true);
+            logSettings.consoleLevel = Logger::ParseLevel(logJson.value("ConsoleLevel", std::string("Info")), LogLevel::Info);
+            logSettings.fileLevel = Logger::ParseLevel(logJson.value("FileLevel", std::string("Info")), LogLevel::Info);
+        }
+
         std::cout << "Config loaded successfully. Bind: " << serverConfig.bindAddress
                   << " Port: " << serverConfig.port << std::endl;
         return true;
