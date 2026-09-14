@@ -4,6 +4,7 @@
 #include "GameSession.h"
 #include "GameRoom.h"
 #include "RedisManager.h"
+#include "FaultInjection.h"	// [TD-02] Debug 전용 실패 주입 지점
 
 std::array<PacketHandlerFunc, UINT16_MAX + 1> GPacketHandler; // [S2] 65536칸
 
@@ -120,6 +121,8 @@ bool Handle_C_LOGIN(PacketSessionRef& session, Protocol::C_LOGIN& pkt)
 }
 bool Handle_C_ENTER_GAME(PacketSessionRef& session, Protocol::C_ENTER_GAME& pkt)
 {
+	MMO_FAULT_POINT(PacketHandler);	// [TD-02] 받는 경계: PacketSession::OnRecv (B1)
+
 	GameSessionRef gameSession = std::static_pointer_cast<GameSession>(session);
 
 	/*

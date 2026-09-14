@@ -2,6 +2,7 @@
 #include "CoreGlobal.h"
 #include "DBAwaitable.h"
 #include "DBConnectionPool.h"
+#include "FaultInjection.h" // [TD-02] Debug 전용 실패 주입 지점
 #include "JobTimer.h"
 #include "RedisManager.h"
 #include "ServerPacketHandler.h"
@@ -188,6 +189,8 @@ JobTask GameRoom::SavePlayerToDB(PlayerSaveData data) {
 }
 
 void GameRoom::HandleMove(PlayerRef player, Protocol::C_MOVE pkt) {
+  MMO_FAULT_POINT(JobExecute); // [TD-02] 받는 경계: JobQueue::Execute (B2)
+
   if (player == nullptr)
     return;
 

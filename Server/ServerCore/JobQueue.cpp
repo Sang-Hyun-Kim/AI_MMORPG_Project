@@ -39,7 +39,19 @@ void JobQueue::Execute()
 		// 꺼낸 일감들을 처리합니다.
 		for (JobRef& j : jobs)
 		{
-			j->Execute();
+			// [TD-02 B2] 잡 1개의 예외는 그 잡만 버립니다. 아래 fetch_sub 에 반드시 도달해야 룸이 영구 정지하지 않습니다.
+			try
+			{
+				j->Execute();
+			}
+			catch (const std::exception& e)
+			{
+				MLOG_ERROR(Sys) << "[JobQueue] job threw: " << e.what();
+			}
+			catch (...)
+			{
+				MLOG_ERROR(Sys) << "[JobQueue] job threw: unknown exception";
+			}
 		}
 
 		// 방금 처리한 개수만큼 실행 카운트를 뺍니다.

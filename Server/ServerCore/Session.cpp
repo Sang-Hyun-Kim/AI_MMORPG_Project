@@ -328,7 +328,23 @@ int32 PacketSession::OnRecv(std::span<std::byte> buffer)
 		if (dataSize < header.size)
 			break;
 
-		OnRecvPacket(buffer.subspan(processLen, header.size));
+		// [TD-02 B1] 핸들러 예외는 이 세션만 종료합니다. 상위(Dispatch)에서 잡으면 RegisterRecv 를 건너뛰어 좀비 세션이 됩니다.
+		try
+		{
+			OnRecvPacket(buffer.subspan(processLen, header.size));
+		}
+		catch (const std::exception& e)
+		{
+			MLOG_ERROR(Net) << "[PacketSession] handler threw: " << e.what();
+			Disconnect(L"Packet Handler Exception");
+			return len; // 남은 버퍼를 전부 소비 처리 — [S1] 방어와 같은 패턴
+		}
+		catch (...)
+		{
+			MLOG_ERROR(Net) << "[PacketSession] handler threw: unknown exception";
+			Disconnect(L"Packet Handler Exception");
+			return len;
+		}
 
 		processLen += header.size;
 	}
