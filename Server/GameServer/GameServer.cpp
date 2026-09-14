@@ -7,6 +7,7 @@
 #include "ServerPacketHandler.h"
 
 #include "GameRoomManager.h"
+#include "FaultInjection.h"
 #include "GameSession.h"
 #include "RedisManager.h"
 
@@ -58,6 +59,9 @@ int main() {
 
   // [TD-01] Config.json 의 "Log" 섹션 적용 (없으면 기본값 유지)
   Logger::Configure(GConfigManager->logSettings);
+
+  // [TD-02] Debug 전용 실패 주입 설정(환경 변수 MMO_FAULT). Release 에서는 아무것도 하지 않습니다.
+  FaultInjection::Init();
 
   GRedisManager = std::make_shared<RedisManager>();
   if (!GRedisManager->Connect(GConfigManager->databaseConfig.redisString)) {

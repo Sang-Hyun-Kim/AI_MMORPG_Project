@@ -25,6 +25,7 @@ add_library(ServerCore STATIC
     ConfigManager.cpp
     DBConnectionPool.cpp
     Logger.cpp            # [TD-01] 구조적 로그 시스템
+    FaultInjection.cpp    # [TD-02] 예외 경계 시험용 실패 주입 (Debug 전용 동작)
 )
 
 # 인클루드 경로 설정 (현재 디렉토리)
