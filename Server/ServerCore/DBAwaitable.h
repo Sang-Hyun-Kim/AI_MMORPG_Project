@@ -2,6 +2,7 @@
 #include "CorePch.h"
 #include "DBConnectionPool.h"
 #include "JobQueue.h"
+#include "Logger.h" // [TD-02] CorePch.h 가 이 헤더를 Logger.h 보다 먼저 포함하므로 직접 포함
 #include <coroutine>
 
 /*
@@ -32,9 +33,19 @@ public:
     // 이때 코루틴 핸들(handle)과 원래 작업 큐(queue)를 람다 캡처로 함께
     // 넘깁니다.
     GDBConnectionPool->PushJob(
-        [handle, job = _dbJob, queue = _resumeQueue](DBConnection *conn) {
+        [this, handle, job = _dbJob, queue = _resumeQueue](DBConnection *conn) {
           // 2. DB 스레드에서 실제 DB 작업 실행
-          job(conn);
+          // [TD-02 B4b] 작업이 던지면 실패로 표시하고 그래도 재개합니다(영구 미재개·프레임 누수 방지).
+          //   this(awaiter)는 co_await 임시 객체로 코루틴 프레임에 살아 있어 재개 전까지 유효합니다.
+          try {
+            job(conn);
+          } catch (const std::exception &e) {
+            _succeeded = false;
+            MLOG_ERROR(Db) << "[DBAwaitable] db job threw: " << e.what();
+          } catch (...) {
+            _succeeded = false;
+            MLOG_ERROR(Db) << "[DBAwaitable] db job threw: unknown exception";
+          }
 
           // 3. 작업이 끝나면 원래 큐(예: GameRoom 큐)로 코루틴 Resume(재개)
           // 작업을 던짐
@@ -48,10 +59,13 @@ public:
         });
   }
 
-  // 코루틴이 재개될 때 호출되며, 결과를 반환할 수 있습니다. (여기서는 void)
-  void await_resume() const noexcept {}
+  // 코루틴이 재개될 때 호출되며, 결과를 반환할 수 있습니다.
+  // [TD-02] co_await 결과: DB 작업이 예외 없이 끝났으면 true. (쿼리 실패로 인한 false 반환은 여기서 구분하지 않음 — TD-05)
+  //   ⚠️ 반환형과 호출부(LoadPlayerTask · SavePlayerToDB · ProcessMailboxDB)는 한 쌍입니다. 되돌릴 때 함께.
+  bool await_resume() const noexcept { return _succeeded; }
 
 private:
+  bool _succeeded = true; // [TD-02 B4b] 작업 람다가 예외로 끝나면 false
   std::function<void(DBConnection *)>
       _dbJob; // DB 워커에서 실행할 실제 쿼리 함수
   std::shared_ptr<class JobQueue> _resumeQueue; // 재개될 원래 스레드의 큐
@@ -76,6 +90,15 @@ struct JobTask {
       return {};
     } // 완료 후 그대로 소멸
     void return_void() {}
-    void unhandled_exception() {}
+    // [TD-02 B4a] 코루틴 본문 예외를 기록합니다(이전: 무음 삼킴). 이후 final_suspend 에서 프레임 소멸.
+    void unhandled_exception() noexcept {
+      try {
+        throw;
+      } catch (const std::exception &e) {
+        MLOG_ERROR(Sys) << "[JobTask] coroutine threw: " << e.what();
+      } catch (...) {
+        MLOG_ERROR(Sys) << "[JobTask] coroutine threw: unknown exception";
+      }
+    }
   };
 };

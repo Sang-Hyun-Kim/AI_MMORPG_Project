@@ -222,11 +222,22 @@ void DBConnectionPool::WorkerThread()
             _jobs.pop();
         }
 
-        DBConnection* connection = Pop();
-        if (connection)
+        // [TD-02 B3] 작업이 던져도 lease 소멸자가 반납 → 워커 계속. (DBAwaitable 작업은 B4b 가 먼저 잡음)
+        ConnectionLease lease(*this, Pop());
+        if (lease.conn)
         {
-            job(connection);
-            Push(connection);
+            try
+            {
+                job(lease.conn);
+            }
+            catch (const std::exception& e)
+            {
+                MLOG_ERROR(Db) << "[DBConnectionPool] job threw: " << e.what();
+            }
+            catch (...)
+            {
+                MLOG_ERROR(Db) << "[DBConnectionPool] job threw: unknown exception";
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 #include "GameSession.h"
 #include "GameRoomManager.h"
 #include "ServerPacketHandler.h"
+#include "FaultInjection.h" // [TD-02] Debug 전용 실패 주입 지점
 
 GameSession::GameSession() {}
 
@@ -31,6 +32,8 @@ JobTask GameSession::LoadPlayerTask(uint64 playerId) {
    *    쿼리가 오류 2014로 실패합니다. SELECT는 반드시 ExecuteQuery를 쓰십시오. [F8]
    */
   auto dbJob = [playerId, loadedData](DBConnection *conn) {
+    MMO_FAULT_POINT(DbJob); // [TD-02] 받는 경계: DBAwaitable 작업 람다 (B4b)
+
     // playerId는 Handle_C_LOGIN에서 숫자 파싱을 통과한 값이므로 SQL 문자열에
     // 그대로 넣어도 안전합니다. (정도는 Prepared Statement이며 데모 후 과제)
     const std::string selectQuery =
@@ -110,7 +113,13 @@ JobTask GameSession::LoadPlayerTask(uint64 playerId) {
 #endif
 
   // null 큐를 넘겨 DB 스레드에서 코루틴을 직접 재개시킵니다.
-  co_await DBAwaitable(dbJob, nullptr);
+  // [TD-02 D6] 작업이 예외로 실패하면 기본값 캐릭터로 입장시키지 않고 세션을 끊습니다.
+  if ((co_await DBAwaitable(dbJob, nullptr)) == false) {
+    session->Disconnect(L"Player Load Failed");
+    co_return;
+  }
+
+  MMO_FAULT_POINT(CoroutineBody); // [TD-02] 받는 경계: JobTask::promise_type::unhandled_exception (B4a)
 
   PlayerRef player = std::make_shared<Player>();
   // [O1] 상태 단일화: ID/이름/좌표는 GameObject::_info 한 곳에만 기록합니다.

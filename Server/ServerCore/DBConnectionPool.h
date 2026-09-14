@@ -171,6 +171,18 @@ public:
 private:
     void WorkerThread();
 
+    // [TD-02 B3] 대여한 커넥션을 스코프 종료 시 반드시 반납합니다(작업 예외와 무관하게 풀 크기 유지).
+    struct ConnectionLease
+    {
+        ConnectionLease(DBConnectionPool& p, DBConnection* c) : pool(p), conn(c) {}
+        ~ConnectionLease() { if (conn) pool.Push(conn); }
+        ConnectionLease(const ConnectionLease&) = delete;
+        ConnectionLease& operator=(const ConnectionLease&) = delete;
+
+        DBConnectionPool& pool;
+        DBConnection* conn;
+    };
+
 private:
     std::mutex _lock;
     std::condition_variable _cv;

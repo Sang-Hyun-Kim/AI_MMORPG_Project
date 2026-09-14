@@ -181,7 +181,11 @@ JobTask GameRoom::SavePlayerToDB(PlayerSaveData data) {
     }
   };
 
-  co_await DBAwaitable(dbJob, jobQueue);
+  // [TD-02 D6] 작업이 예외로 끝났으면 거짓 "DB Save Complete" 를 남기지 않습니다.
+  if ((co_await DBAwaitable(dbJob, jobQueue)) == false) {
+    MLOG_ERROR(Db) << "[GameRoom] DB Save aborted by exception. PlayerId=" << data.playerId;
+    co_return;
+  }
 
   MLOG_INFO(Db) << "Player " << data.name << " (PlayerId=" << data.playerId
             << ") DB Save Complete. Pos=(" << data.x << ", " << data.y << ", "
@@ -325,7 +329,11 @@ JobTask GameRoom::ProcessMailboxDB(PlayerRef player) {
   };
 
   // 1. 여기서 게임 스레드는 중단되고, DB 스레드로 dbJob이 넘어갑니다.
-  co_await DBAwaitable(dbJob, jobQueue);
+  // [TD-02 D6] 우편 삭제가 예외로 실패했으면 골드를 지급하지 않습니다.
+  if ((co_await DBAwaitable(dbJob, jobQueue)) == false) {
+    MLOG_ERROR(Db) << "[GameRoom] Mailbox DB job aborted by exception. PlayerId=" << playerId;
+    co_return;
+  }
 
   // 2. DB 작업 완료 후, 다시 게임 스레드로 돌아왔습니다! (Resume)
   // (비동기 대기 중에 유저가 나갔는지 등 예외 처리가 필요하지만 여기선
