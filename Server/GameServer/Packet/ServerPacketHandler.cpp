@@ -51,10 +51,24 @@ bool Handle_C_LOGIN(PacketSessionRef& session, Protocol::C_LOGIN& pkt)
 		std::string key = "Ticket:User:" + ticket;
 
 		// Lua Script 대신 간편하게 Transaction(GET+DEL)을 사용하는 예시
-		auto val = GRedisManager->GetRedis()->get(key);
+		// [TD-02 B5 · V38] redis++ 는 연결 오류를 예외로 알립니다. 외부 라이브러리 경계에서 잡아 로그인 거절로 변환합니다.
+		//   GET/DEL 원자화(V30)는 TD-13 — 이 블록은 예외 경계만 담당합니다.
+		sw::redis::OptionalString val;
+		try
+		{
+			val = GRedisManager->GetRedis()->get(key);
+			if (val)
+				GRedisManager->GetRedis()->del(key);	// 1회용 소비 — 티켓 재사용 차단
+		}
+		catch (const sw::redis::Error& e)
+		{
+			MLOG_ERROR(Login) << L"Login Failed: Redis error (" << LogMask::Ticket(ticket) << L") " << e.what();
+			session->Disconnect(L"Auth Backend Error");
+			return false;
+		}
+
 		if (val)
 		{
-			GRedisManager->GetRedis()->del(key);	// 1회용 소비 — 티켓 재사용 차단
 
 			/*
 			 * [2026-09-04] 신원 결속: Redis 값(PlayerId)을 세션에 보관합니다.
