@@ -13,7 +13,7 @@ bool ConfigManager::Init(const std::string& path)
     std::ifstream file(path);
     if (!file.is_open())
     {
-        std::cerr << "Failed to open config file: " << path << std::endl;
+        MLOG_WARN(Config) << "Failed to open config file: " << path;
         return false;
     }
 
@@ -56,13 +56,13 @@ bool ConfigManager::Init(const std::string& path)
             logSettings.fileLevel = Logger::ParseLevel(logJson.value("FileLevel", std::string("Info")), LogLevel::Info);
         }
 
-        std::cout << "Config loaded successfully. Bind: " << serverConfig.bindAddress
-                  << " Port: " << serverConfig.port << std::endl;
+        MLOG_INFO(Config) << "Config loaded successfully. Bind: " << serverConfig.bindAddress
+                          << " Port: " << serverConfig.port;
         return true;
     }
     catch (const json::exception& e)
     {
-        std::cerr << "Config Parse Error: " << e.what() << std::endl;
+        MLOG_ERROR(Config) << "Config Parse Error: " << e.what();
         return false;
     }
 }
