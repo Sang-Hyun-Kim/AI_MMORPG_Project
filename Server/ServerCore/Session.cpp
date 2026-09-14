@@ -48,7 +48,7 @@ void Session::Disconnect(const WCHAR* cause)
 	if (_connected.exchange(false) == false)
 		return;
 
-	std::wcout << L"Disconnect : " << cause << std::endl;
+	MLOG_INFO(Net) << L"Disconnect : " << cause;
 	RegisterDisconnect();
 }
 
@@ -274,7 +274,7 @@ void Session::HandleError(int32 errorCode)
 		Disconnect(L"HandleError");
 		break;
 	default:
-		std::cout << "Handle Error : " << errorCode << std::endl;
+		MLOG_WARN(Net) << "Handle Error : " << errorCode;
 		break;
 	}
 }

@@ -20,13 +20,13 @@ bool RedisManager::Connect(const std::string& uri)
 		// 접속 테스트 (Ping)
 		if (_redis->ping() == "PONG")
 		{
-			std::cout << "[RedisManager] Connected to Redis: " << uri << std::endl;
+			MLOG_INFO(Redis) << "[RedisManager] Connected to Redis: " << LogMask::Uri(uri);
 			return true;
 		}
 	}
 	catch (const sw::redis::Error& e)
 	{
-		std::cerr << "[RedisManager] Connection failed: " << e.what() << std::endl;
+		MLOG_ERROR(Redis) << "[RedisManager] Connection failed: " << e.what();
 	}
 	
 	_redis = nullptr;

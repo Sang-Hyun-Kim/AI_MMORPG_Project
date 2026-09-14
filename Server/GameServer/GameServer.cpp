@@ -25,9 +25,8 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD dwCtrlType) {
   case CTRL_CLOSE_EVENT:
   case CTRL_BREAK_EVENT:
     Logger::SetThreadName("CTRL");
-    std::cout
-        << "\n[System] Shutdown signal received. Preparing graceful shutdown..."
-        << std::endl;
+    MLOG_INFO(Sys)
+        << "\n[System] Shutdown signal received. Preparing graceful shutdown...";
     GIsRunning = false;
     // [TD-01] CLOSE 이벤트는 핸들러 반환 직후 OS가 프로세스를 종료하므로 큐를 비웁니다.
     Logger::Flush();
@@ -44,7 +43,7 @@ int main() {
 
   // 종료 시그널 핸들러 등록
   if (!SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE)) {
-    std::cout << "[Warning] Could not set control handler" << std::endl;
+    MLOG_WARN(Sys) << "[Warning] Could not set control handler";
   }
   // 메모리 누수 탐지 (종료 시 덤프)
   _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
@@ -54,7 +53,7 @@ int main() {
   GGameRoomManager->Init();
 
   if (!GConfigManager->Init("Config.json")) {
-    std::cout << "Failed to load Config.json. Using defaults." << std::endl;
+    MLOG_WARN(Config) << "Failed to load Config.json. Using defaults.";
   }
 
   // [TD-01] Config.json 의 "Log" 섹션 적용 (없으면 기본값 유지)
@@ -62,7 +61,7 @@ int main() {
 
   GRedisManager = std::make_shared<RedisManager>();
   if (!GRedisManager->Connect(GConfigManager->databaseConfig.redisString)) {
-    std::cout << "Redis Connect Failed!" << std::endl;
+    MLOG_ERROR(Redis) << "Redis Connect Failed!";
   }
 
   if (!GDBConnectionPool->Connect(
@@ -72,9 +71,9 @@ int main() {
           GConfigManager->databaseConfig.mySqlUser,
           GConfigManager->databaseConfig.mySqlPassword,
           GConfigManager->databaseConfig.mySqlDatabase)) {
-    std::cout << "MySQL Connect Failed!" << std::endl;
+    MLOG_ERROR(Db) << "MySQL Connect Failed!";
   } else {
-    std::cout << "MySQL Connected Successfully." << std::endl;
+    MLOG_INFO(Db) << "MySQL Connected Successfully.";
   }
 
   // [B1] 리슨 주소를 Config.json의 Server.BindAddress에서 읽습니다.
@@ -108,8 +107,8 @@ int main() {
     });
   }
 
-  std::cout << "GameServer is running on port "
-            << GConfigManager->serverConfig.port << "..." << std::endl;
+  MLOG_INFO(Sys) << "GameServer is running on port "
+                 << GConfigManager->serverConfig.port << "...";
 
   // 무한 루프 대신 플래그 기반 제어
   while (GIsRunning) {
@@ -117,9 +116,8 @@ int main() {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 
-  std::cout
-      << "[System] Main loop exited. Broadcasting AutoSave to all rooms..."
-      << std::endl;
+  MLOG_INFO(Sys)
+      << "[System] Main loop exited. Broadcasting AutoSave to all rooms...";
 
   // Phase 3: Graceful Shutdown
   // 모든 접속 중인 유저들의 상태를 캡처하여 DB에 스냅샷 저장(AutoSave)을
@@ -130,8 +128,7 @@ int main() {
   // 큐)로 작업을 넘길 시간을 줍니다.
   std::this_thread::sleep_for(std::chrono::seconds(1));
 
-  std::cout << "[System] Waiting for worker threads and DB flush..."
-            << std::endl;
+  MLOG_INFO(Sys) << "[System] Waiting for worker threads and DB flush...";
 
   // GThreadManager->Join()을 통해 모든 워커 스레드(DB 포함)가 큐에 쌓인 남은
   // 작업을 모두 소진(Flush)할 때까지 대기한 후 안전하게 스레드들을 회수합니다.

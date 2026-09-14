@@ -26,7 +26,7 @@ bool DBConnection::Connect(const std::string& host, int port, const std::string&
     MYSQL* ret = mysql_real_connect(_conn, host.c_str(), user.c_str(), password.c_str(), dbName.c_str(), port, nullptr, 0);
     if (ret == nullptr)
     {
-        std::cerr << "MySQL Connection Error: " << mysql_error(_conn) << std::endl;
+        MLOG_ERROR(Db) << "MySQL Connection Error: " << mysql_error(_conn);
         return false;
     }
 
@@ -53,7 +53,7 @@ bool DBConnection::Execute(const std::string& query)
     int ret = mysql_query(_conn, query.c_str());
     if (ret != 0)
     {
-        std::cerr << "MySQL Query Error: " << mysql_error(_conn) << " (Query: " << query << ")" << std::endl;
+        MLOG_ERROR(Db) << "MySQL Query Error: " << mysql_error(_conn) << " (Query: " << query << ")";
         return false;
     }
     return true;
@@ -72,7 +72,7 @@ DBResult DBConnection::ExecuteQuery(const std::string& query)
 
     if (mysql_query(_conn, query.c_str()) != 0)
     {
-        std::cerr << "MySQL Query Error: " << mysql_error(_conn) << " (Query: " << query << ")" << std::endl;
+        MLOG_ERROR(Db) << "MySQL Query Error: " << mysql_error(_conn) << " (Query: " << query << ")";
         return DBResult(nullptr);
     }
 
@@ -83,7 +83,7 @@ DBResult DBConnection::ExecuteQuery(const std::string& query)
     {
         // 결과 셋이 없는 정상 케이스(UPDATE 등)와 실제 오류를 구분합니다.
         if (mysql_field_count(_conn) != 0)
-            std::cerr << "MySQL StoreResult Error: " << mysql_error(_conn) << std::endl;
+            MLOG_ERROR(Db) << "MySQL StoreResult Error: " << mysql_error(_conn);
         return DBResult(nullptr);
     }
 
