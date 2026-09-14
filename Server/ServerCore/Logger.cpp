@@ -545,6 +545,16 @@ namespace
 
 	void RecomputeMinLevel(const LoggerState& s) noexcept;
 
+#ifdef _DEBUG
+	// [V41 시험 훅 · Debug 전용] 지연(ms) 환경 변수를 읽습니다. 없거나 잘못되면 0.
+	DWORD DebugDelayMs(const char* name) noexcept
+	{
+		char value[16] = {};
+		const DWORD len = ::GetEnvironmentVariableA(name, value, static_cast<DWORD>(sizeof(value)));
+		return (len > 0 && len < sizeof(value)) ? static_cast<DWORD>(std::strtoul(value, nullptr, 10)) : 0;
+	}
+#endif
+
 	/*------------------------------------------------------------------
 		기록 스레드
 	------------------------------------------------------------------*/
@@ -562,7 +572,10 @@ namespace
 			if (b.front.empty())
 			{
 				if (b.stopping)
+				{
+					b.running = false;  // [V41] queueLock 보유 중에 닫음 → 이후 Enqueue 는 NotRunning → 직접 기록 경로
 					break;
+				}
 				continue;  // 주기적으로 깨어났으나 할 일 없음
 			}
 
@@ -596,6 +609,12 @@ namespace
 			}
 			b.cvFlushed.notify_all();
 		}
+
+#ifdef _DEBUG
+		// [V41 시험 훅 · Debug 전용] 루프를 나간(락 해제) 뒤 반환을 늦춰 join 구간을 넓힙니다.
+		if (const DWORD delayMs = DebugDelayMs("MMO_LOG_DRAIN_DELAY_MS"))
+			::Sleep(delayMs);
+#endif
 	}
 
 	void StartBackend(LoggerState& s, std::uint32_t capacity)
@@ -1083,6 +1102,12 @@ void Logger::Submit(LogLevel level, LogCategory category, const std::source_loca
 		LoggerState& s = *gState;
 		if (mode == Mode::Async)
 		{
+#ifdef _DEBUG
+			// [V41 시험 훅 · Debug 전용] Async 로 읽은 뒤 Enqueue 까지를 늦춰, 전환 중 늦게 도착하는 생산자를 만듭니다.
+			static const DWORD enqueueDelayMs = DebugDelayMs("MMO_LOG_ENQUEUE_DELAY_MS");
+			if (enqueueDelayMs > 0)
+				::Sleep(enqueueDelayMs);
+#endif
 			std::uint64_t seq = 0;
 			const EnqueueResult result = Enqueue(s, rec, seq);
 			if (result == EnqueueResult::Enqueued)
