@@ -89,7 +89,7 @@ bool Handle_S_LOGIN(PacketSessionRef &session, Protocol::S_LOGIN &pkt) {
 bool Handle_S_ENTER_GAME(PacketSessionRef &session,
                          Protocol::S_ENTER_GAME &pkt) {
   if (pkt.success() == false) {
-    std::cout << "[DummyClient] S_ENTER_GAME failed." << std::endl;
+    MLOG_WARN(Dummy) << "[DummyClient] S_ENTER_GAME failed.";
     DummyScenario::GFinished.store(true);
     return true;
   }
@@ -103,10 +103,9 @@ bool Handle_S_ENTER_GAME(PacketSessionRef &session,
   DummyScenario::GRecvY.store(static_cast<int32>(std::lround(pos.y())));
   DummyScenario::GRecvZ.store(static_cast<int32>(std::lround(pos.z())));
 
-  std::cout << "[DummyClient] S_ENTER_GAME  PlayerId=" << obj.objectid()
+  MLOG_INFO(Dummy) << "[DummyClient] S_ENTER_GAME  PlayerId=" << obj.objectid()
             << "  Name=" << obj.name() << "  Level=" << pkt.player().level()
-            << "  Pos=(" << pos.x() << ", " << pos.y() << ", " << pos.z() << ")"
-            << std::endl;
+            << "  Pos=(" << pos.x() << ", " << pos.y() << ", " << pos.z() << ")";
 
   switch (DummyScenario::GMode) {
   case DummyScenario::Mode::Move: {
@@ -142,18 +141,17 @@ bool Handle_S_ENTER_GAME(PacketSessionRef &session,
 
         session->Send(ClientPacketHandler::MakeSendBuffer(movePkt));
         if (attempt == 1) {
-          std::cout << "[DummyClient] C_MOVE sent -> ("
+          MLOG_INFO(Dummy) << "[DummyClient] C_MOVE sent -> ("
                     << DummyScenario::GTargetX << ", " << DummyScenario::GTargetY
-                    << ", " << DummyScenario::GTargetZ << ")" << std::endl;
+                    << ", " << DummyScenario::GTargetZ << ")";
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
       }
 
       if (DummyScenario::GMoveAcked.load())
-        std::cout << "[DummyClient] C_MOVE ACKED (server applied)" << std::endl;
+        MLOG_INFO(Dummy) << "[DummyClient] C_MOVE ACKED (server applied)";
       else
-        std::cout << "[DummyClient] C_MOVE NOT acked — 서버가 반영하지 않았습니다"
-                  << std::endl;
+        MLOG_WARN(Dummy) << "[DummyClient] C_MOVE NOT acked — 서버가 반영하지 않았습니다";
 
       // 반영 확인 후에도 서버의 Leave 스냅샷 저장이 돌 시간을 조금 줍니다.
       std::this_thread::sleep_for(std::chrono::milliseconds(300));
@@ -172,10 +170,10 @@ bool Handle_S_ENTER_GAME(PacketSessionRef &session,
                     (dz <= DummyScenario::GTolerance);
 
     DummyScenario::GPassed.store(ok);
-    std::cout << "[DummyClient] VERIFY expect=(" << DummyScenario::GExpectX << ", "
+    MLOG_INFO(Dummy) << "[DummyClient] VERIFY expect=(" << DummyScenario::GExpectX << ", "
               << DummyScenario::GExpectY << ", " << DummyScenario::GExpectZ
               << ")  actual=(" << pos.x() << ", " << pos.y() << ", " << pos.z()
-              << ")  => " << (ok ? "PASS" : "FAIL") << std::endl;
+              << ")  => " << (ok ? "PASS" : "FAIL");
 
     std::thread([session]() {
       std::this_thread::sleep_for(std::chrono::milliseconds(200));

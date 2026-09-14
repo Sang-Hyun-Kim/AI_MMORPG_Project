@@ -58,13 +58,13 @@ public:
 			}
 			catch (const std::exception& e)
 			{
-				std::cout << "[DummyClient] Ticket registration failed: " << e.what() << std::endl;
+				MLOG_ERROR(Dummy) << "[DummyClient] Ticket registration failed: " << e.what();
 				return;		// 로그인 시도조차 하지 않습니다 (서버가 거부할 것이 자명)
 			}
 		}
 		else
 		{
-			std::cout << "[DummyClient] Redis unavailable — cannot issue ticket. Aborting login." << std::endl;
+			MLOG_ERROR(Dummy) << "[DummyClient] Redis unavailable — cannot issue ticket. Aborting login.";
 			return;
 		}
 
@@ -157,7 +157,7 @@ static DummyClientArgs ParseArgs(int argc, char* argv[])
 			if (value > 0 && value <= 65535)
 				args.port = static_cast<uint16>(value);
 			else
-				std::cout << "[DummyClient] Ignored invalid -port=" << value << " (must be 1..65535)" << std::endl;
+				MLOG_WARN(Dummy) << "[DummyClient] Ignored invalid -port=" << value << " (must be 1..65535)";
 		}
 		else if (arg.starts_with("-sessions="))
 		{
@@ -168,8 +168,8 @@ static DummyClientArgs ParseArgs(int argc, char* argv[])
 				// 부하 시험을 구조적으로 차단합니다. 이 상한을 올리지 마십시오.
 				if (value > DummyScenario::kMaxSessions)
 				{
-					std::cout << "[DummyClient] -sessions=" << value << " exceeds hard cap "
-					          << DummyScenario::kMaxSessions << ". Clamped." << std::endl;
+					MLOG_WARN(Dummy) << "[DummyClient] -sessions=" << value << " exceeds hard cap "
+					          << DummyScenario::kMaxSessions << ". Clamped.";
 					args.sessionCount = DummyScenario::kMaxSessions;
 				}
 				else
@@ -179,7 +179,7 @@ static DummyClientArgs ParseArgs(int argc, char* argv[])
 			}
 			else
 			{
-				std::cout << "[DummyClient] Ignored invalid -sessions=" << value << " (must be >= 1)" << std::endl;
+				MLOG_WARN(Dummy) << "[DummyClient] Ignored invalid -sessions=" << value << " (must be >= 1)";
 			}
 		}
 		else if (arg.starts_with("-scenario="))
@@ -189,7 +189,7 @@ static DummyClientArgs ParseArgs(int argc, char* argv[])
 			else if (value == "move")   DummyScenario::GMode = DummyScenario::Mode::Move;
 			else if (value == "verify") DummyScenario::GMode = DummyScenario::Mode::Verify;
 			else if (value == "stress") { DummyScenario::GMode = DummyScenario::Mode::Stress; DummyScenario::GAutoReconnect = true; }
-			else std::cout << "[DummyClient] Unknown -scenario=" << value << " (idle|move|verify|stress)" << std::endl;
+			else MLOG_WARN(Dummy) << "[DummyClient] Unknown -scenario=" << value << " (idle|move|verify|stress)";
 		}
 		else if (arg.starts_with("-playerid="))
 		{
@@ -215,7 +215,7 @@ static DummyClientArgs ParseArgs(int argc, char* argv[])
 		}
 		else
 		{
-			std::cout << "[DummyClient] Unknown argument ignored: " << arg << std::endl;
+			MLOG_WARN(Dummy) << "[DummyClient] Unknown argument ignored: " << arg;
 			std::cout << "  usage: DummyClient.exe [-ip=x.x.x.x] [-port=7777] [-sessions=1] [-timeout=20]" << std::endl;
 			std::cout << "         [-scenario=idle|move|verify|stress] [-playerid=N]" << std::endl;
 			std::cout << "         [-move=X,Y,Z] [-expect=X,Y,Z]" << std::endl;
@@ -247,17 +247,17 @@ int main(int argc, char* argv[])
 	GRedisManager = std::make_shared<RedisManager>();
 	if (GRedisManager->Connect(args.redisUri) == false)
 	{
-		std::cout << "[DummyClient] Redis connect failed: " << args.redisUri << std::endl;
-		std::cout << "              -redis=tcp://<host>:<port> 로 지정하거나 Redis 를 기동하십시오." << std::endl;
+		MLOG_ERROR(Dummy) << "[DummyClient] Redis connect failed: " << LogMask::Uri(args.redisUri);
+		MLOG_ERROR(Dummy) << "              -redis=tcp://<host>:<port> 로 지정하거나 Redis 를 기동하십시오.";
 		return 1;
 	}
-	std::cout << "[DummyClient] Redis connected: " << args.redisUri << std::endl;
+	MLOG_INFO(Dummy) << "[DummyClient] Redis connected: " << LogMask::Uri(args.redisUri);
 
 	// 서버가 켜질 때까지 대기
 	std::this_thread::sleep_for(std::chrono::seconds(1));
 
-	std::wcout << L"[DummyClient] Target " << args.ip << L":" << args.port
-	           << L"  sessions=" << args.sessionCount << std::endl;
+	MLOG_INFO(Dummy) << L"[DummyClient] Target " << args.ip << L":" << args.port
+	           << L"  sessions=" << args.sessionCount;
 
 	ClientServiceRef service = std::make_shared<ClientService>(
 		NetAddress(args.ip, args.port),
@@ -282,9 +282,9 @@ int main(int argc, char* argv[])
 			});
 	}
 
-	std::cout << "[DummyClient] scenario=" << DummyScenario::ToString(DummyScenario::GMode)
+	MLOG_INFO(Dummy) << "[DummyClient] scenario=" << DummyScenario::ToString(DummyScenario::GMode)
 	          << "  playerId=" << DummyScenario::GPlayerId
-	          << "  timeout=" << args.timeoutSeconds << "s" << std::endl;
+	          << "  timeout=" << args.timeoutSeconds << "s";
 
 	/*
 	 * [2026-09-04] PING 스레드에 종료 조건 추가

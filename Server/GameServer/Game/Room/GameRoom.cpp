@@ -36,8 +36,8 @@ void GameRoom::AutoSave() {
     DoAsync(&GameRoom::SavePlayerToDB, snapshot);
   }
 
-  std::cout << "[GameRoom] AutoSave Triggered for " << _players.size()
-            << " players." << std::endl;
+  MLOG_INFO(Room) << "[GameRoom] AutoSave Triggered for " << _players.size()
+            << " players.";
 
   // [AOI-1] 60초마다 AOI 관측 통계를 함께 출력합니다.
   // 새 타이머를 만들지 않고 기존 틱에 얹었습니다.
@@ -169,22 +169,22 @@ JobTask GameRoom::SavePlayerToDB(PlayerSaveData data) {
         "PosX = VALUES(PosX), PosY = VALUES(PosY), PosZ = VALUES(PosZ)";
 
     if (conn->Execute(query) == false) {
-      std::cout << "[GameRoom] DB Save FAILED. PlayerId=" << data.playerId << std::endl;
+      MLOG_ERROR(Db) << "[GameRoom] DB Save FAILED. PlayerId=" << data.playerId;
       return;
     }
 
     const uint64 affected = conn->GetAffectedRows();
     if (affected == 0) {
       // 쿼리는 성공했으나 반영된 행이 없음 = 저장할 변경이 없었음.
-      std::cout << "[GameRoom] DB Save: no change. PlayerId=" << data.playerId << std::endl;
+      MLOG_INFO(Db) << "[GameRoom] DB Save: no change. PlayerId=" << data.playerId;
     }
   };
 
   co_await DBAwaitable(dbJob, jobQueue);
 
-  std::cout << "Player " << data.name << " (PlayerId=" << data.playerId
+  MLOG_INFO(Db) << "Player " << data.name << " (PlayerId=" << data.playerId
             << ") DB Save Complete. Pos=(" << data.x << ", " << data.y << ", "
-            << data.z << ") Gold=" << data.gold << std::endl;
+            << data.z << ") Gold=" << data.gold;
 }
 
 void GameRoom::HandleMove(PlayerRef player, Protocol::C_MOVE pkt) {
@@ -269,7 +269,7 @@ void GameRoom::HandleAttack(PlayerRef player, Protocol::C_ATTACK pkt) {
         GRedisManager->GetRedis()->xadd("stream:gold_log", "*", logData.begin(),
                                         logData.end());
       } catch (const sw::redis::Error &e) {
-        std::cout << "Redis XADD Error: " << e.what() << std::endl;
+        MLOG_ERROR(Redis) << "Redis XADD Error: " << e.what();
       }
     }
   }
@@ -337,8 +337,7 @@ JobTask GameRoom::ProcessMailboxDB(PlayerRef player) {
   SendBufferRef statusBuf = ServerPacketHandler::MakeSendBuffer(statusPkt);
   player->Send(statusBuf);
 
-  std::cout << "Player " << playerId << " Mailbox items received from Web Shop!"
-            << std::endl;
+  MLOG_INFO(Room) << "Player " << playerId << " Mailbox items received from Web Shop!";
 }
 
 void GameRoom::Broadcast(SendBufferRef sendBuffer) {
@@ -462,7 +461,8 @@ void GameRoom::PrintAoiStats() const {
   // 본문은 한 번의 << 로 내보내 인터리빙을 막고, flush 는 따로 겁니다.
   // flush 가 없으면 stdout 이 파일/파이프로 리다이렉트됐을 때 블록 버퍼링에
   // 걸려 로그가 보이지 않습니다 (2026-08-10 로그의 stdout 소실과 같은 원인).
-  std::cout << oss.str() << std::flush;
+  // [TD-01 C10] 로거로 전환. 기록 스레드가 배치마다 fflush 하므로 std::flush 는 불필요 (위 주석은 사고 기록으로 보존)
+  MLOG_INFO(Aoi) << oss.str();
 }
 
 void GameRoom::BroadcastToAdjacentSectors(float x, float y,

@@ -7,7 +7,7 @@ GameSession::GameSession() {}
 GameSession::~GameSession() {}
 
 void GameSession::OnConnected() {
-  std::wcout << L"GameSession Connected" << std::endl;
+  MLOG_INFO(Session) << L"GameSession Connected";
   // OnConnected에서는 방 입장(Enter)을 하지 않음! C_ENTER_GAME 패킷 수신 시 정식 입장!
 }
 
@@ -48,10 +48,10 @@ JobTask GameSession::LoadPlayerTask(uint64 playerId) {
       loadedData->y = row[4] ? static_cast<float>(std::atof(row[4])) : 0.f;
       loadedData->z = row[5] ? static_cast<float>(std::atof(row[5])) : 0.f;
 
-      std::cout << "[GameSession] Player Loaded from DB. PlayerId=" << playerId
+      MLOG_INFO(Db) << "[GameSession] Player Loaded from DB. PlayerId=" << playerId
                 << " Name=" << loadedData->name << " Gold=" << loadedData->gold
                 << " Pos=(" << loadedData->x << ", " << loadedData->y << ", "
-                << loadedData->z << ")" << std::endl;
+                << loadedData->z << ")";
     } else {
       /*
        * 신규 캐릭터: 해당 PlayerId의 행이 아직 없습니다.
@@ -73,11 +73,11 @@ JobTask GameSession::LoadPlayerTask(uint64 playerId) {
           conn->EscapeString(loadedData->name) + "', 1, 100, 0, 0, 0)";
 
       if (conn->Execute(insertQuery)) {
-        std::cout << "[GameSession] New Player Created. PlayerId=" << playerId
-                  << " Name=" << loadedData->name << std::endl;
+        MLOG_INFO(Db) << "[GameSession] New Player Created. PlayerId=" << playerId
+                  << " Name=" << loadedData->name;
       } else {
-        std::cout << "[GameSession] WARNING: New Player INSERT failed. PlayerId="
-                  << playerId << " (진행은 계속하되 저장이 안 될 수 있습니다)" << std::endl;
+        MLOG_WARN(Db) << "[GameSession] WARNING: New Player INSERT failed. PlayerId="
+                  << playerId << " (진행은 계속하되 저장이 안 될 수 있습니다)";
       }
     }
   };
@@ -138,9 +138,9 @@ JobTask GameSession::LoadPlayerTask(uint64 playerId) {
   enterPkt.mutable_player()->CopyFrom(player->MakePlayerInfo());
   session->Send(ServerPacketHandler::MakeSendBuffer(enterPkt));
 
-  std::cout << "==================================================" << std::endl;
-  std::cout << "[Server] S_ENTER_GAME Sent! PlayerId: " << playerId << std::endl;
-  std::cout << "==================================================" << std::endl;
+  MLOG_INFO(Session) << "==================================================";
+  MLOG_INFO(Session) << "[Server] S_ENTER_GAME Sent! PlayerId: " << playerId;
+  MLOG_INFO(Session) << "==================================================";
 
   // 2. [핵심] 그 후 GameRoom에 입장시키며 S_SPAWN 브로드캐스트!
   GameRoomRef room = GGameRoomManager->GetRoom(1);
@@ -151,7 +151,7 @@ JobTask GameSession::LoadPlayerTask(uint64 playerId) {
 }
 
 void GameSession::OnDisconnected() {
-  std::wcout << L"GameSession Disconnected" << std::endl;
+  MLOG_INFO(Session) << L"GameSession Disconnected";
 
   if (_player) {
     GameRoomRef room = _player->GetRoom();

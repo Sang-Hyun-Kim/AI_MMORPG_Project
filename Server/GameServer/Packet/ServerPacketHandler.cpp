@@ -41,7 +41,7 @@ bool Handle_INVALID(PacketSessionRef& session, std::span<std::byte> buffer)
 }
 bool Handle_C_LOGIN(PacketSessionRef& session, Protocol::C_LOGIN& pkt)
 {
-	std::wcout << L"[ServerPacketHandler] C_LOGIN Received! Ticket: " << pkt.ticket().c_str() << std::endl;
+	MLOG_INFO(Login) << L"[ServerPacketHandler] C_LOGIN Received! Ticket: " << LogMask::Ticket(pkt.ticket());
 
 	std::string ticket = pkt.ticket();
 
@@ -71,7 +71,7 @@ bool Handle_C_LOGIN(PacketSessionRef& session, Protocol::C_LOGIN& pkt)
 			uint64 playerId = 0;
 			if (ParseUInt64(*val, playerId) == false || playerId == 0)
 			{
-				std::wcout << L"Login Failed: Malformed Ticket Payload (ticket=" << ticket.c_str() << L")" << std::endl;
+				MLOG_WARN(Login) << L"Login Failed: Malformed Ticket Payload (ticket=" << LogMask::Ticket(ticket) << L")";
 				session->Disconnect(L"Malformed Ticket Payload");
 				return false;
 			}
@@ -84,14 +84,14 @@ bool Handle_C_LOGIN(PacketSessionRef& session, Protocol::C_LOGIN& pkt)
 			loginPkt.set_success(true);
 			SendBufferRef sendBuffer = ServerPacketHandler::MakeSendBuffer(loginPkt);
 			session->Send(sendBuffer);
-			std::wcout << L"[ServerPacketHandler] Login Success! Ticket: " << ticket.c_str()
-					   << L" -> PlayerId " << playerId << std::endl;
+			MLOG_INFO(Login) << L"[ServerPacketHandler] Login Success! Ticket: " << LogMask::Ticket(ticket)
+					   << L" -> PlayerId " << playerId;
 			return true;
 		}
 		else
 		{
 			// 검증 실패
-			std::wcout << L"Login Failed: Invalid Ticket (" << ticket.c_str() << L")" << std::endl;
+			MLOG_WARN(Login) << L"Login Failed: Invalid Ticket (" << LogMask::Ticket(ticket) << L")";
 			session->Disconnect(L"Invalid Ticket");
 			return false;
 		}
@@ -111,8 +111,8 @@ bool Handle_C_LOGIN(PacketSessionRef& session, Protocol::C_LOGIN& pkt)
 		 *   검증용 티켓은 DummyClient 가 Redis 에 직접 등록합니다(C# 백엔드와 동일 규약).
 		 *   서버는 이제 Redis 검증이라는 **단일 경로**만 가집니다.
 		 */
-		std::wcout << L"Login Failed: Redis unavailable — cannot validate ticket ("
-				   << ticket.c_str() << L")" << std::endl;
+		MLOG_ERROR(Login) << L"Login Failed: Redis unavailable — cannot validate ticket ("
+				   << LogMask::Ticket(ticket) << L")";
 		session->Disconnect(L"Auth Backend Unavailable");
 		return false;
 	}
@@ -145,7 +145,7 @@ bool Handle_C_ENTER_GAME(PacketSessionRef& session, Protocol::C_ENTER_GAME& pkt)
 	const uint64 playerId = gameSession->GetPlayerId();
 	if (playerId == 0)
 	{
-		std::wcout << L"[ServerPacketHandler] C_ENTER_GAME rejected: login required." << std::endl;
+		MLOG_WARN(Login) << L"[ServerPacketHandler] C_ENTER_GAME rejected: login required.";
 		session->Disconnect(L"Enter Before Login");
 		return false;
 	}
