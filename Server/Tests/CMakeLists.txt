@@ -23,12 +23,15 @@ add_executable(ServerTests
     Unit/TestMain.cpp
     Unit/HarnessTests.cpp
     Unit/SabotageTests.cpp
+    Unit/SectorMathTests.cpp
 )
 
+# SectorMath.h 만 쓰기 위한 경로. GameRoom.h 는 include 하지 않습니다(GameServer 의존이 따라옴).
+target_include_directories(ServerTests PRIVATE ${CMAKE_SOURCE_DIR}/GameServer/Game/Room)
 target_link_libraries(ServerTests PRIVATE ServerCore doctest::doctest)
 
 # 스위트 단위로 ctest 항목을 나눕니다. 라벨: unit · sabotage (+ selftest)
-foreach(suite Harness)
+foreach(suite Harness SectorMath)
     add_test(NAME Unit.${suite} COMMAND ServerTests --test-suite=${suite})
     set_tests_properties(Unit.${suite} PROPERTIES LABELS "unit" TIMEOUT 120)
 endforeach()

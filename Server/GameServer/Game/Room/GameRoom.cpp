@@ -5,6 +5,7 @@
 #include "FaultInjection.h" // [TD-02] Debug 전용 실패 주입 지점
 #include "JobTimer.h"
 #include "RedisManager.h"
+#include "SectorMath.h" // [TD-03] AOI 격자 계산 정본
 #include "ServerPacketHandler.h"
 #include <cmath>    // [AOI-1] std::floor — 음수 좌표 격자 계산
 #include <sstream>  // [AOI-1] 통계 한 줄 조립 (cout 인터리빙 방지)
@@ -369,16 +370,13 @@ void GameRoom::Broadcast(SendBufferRef sendBuffer) {
  */
 
 int32 GameRoom::SectorCoord(float v) {
-  // [버그 수정] static_cast<int32> 는 0 방향 절단이라 -500 과 +500 이 모두 0 이
-  // 됩니다. floor 를 써야 음수 영역에서도 격자 간격이 균일해집니다.
-  return static_cast<int32>(std::floor(v / kCellSize));
+  // [TD-03] 계산식과 설명 주석은 SectorMath.h 로 옮김(단위 시험 대상). 동작 동일.
+  return SectorMath::SectorCoord(v, kCellSize);
 }
 
 int64 GameRoom::MakeSectorKey(int32 sx, int32 sy) {
-  // 이전의 sx + sy * 1000 은 |sx| 가 500 을 넘으면 다른 셀과 값이 겹칩니다.
-  // 상위 32비트에 sx, 하위 32비트에 sy 를 담아 충돌을 없앱니다.
-  return (static_cast<int64>(sx) << 32) |
-         static_cast<int64>(static_cast<uint32>(sy));
+  // [TD-03] 계산식과 설명 주석은 SectorMath.h 로 옮김(단위 시험 대상). 동작 동일.
+  return SectorMath::MakeSectorKey(sx, sy);
 }
 
 int64 GameRoom::GetSectorIndex(float x, float y) {
