@@ -179,6 +179,9 @@ Docs/Benchmarks/
 
 # 테스트 자료도 업로드 하지 않겠다.
 /Server/Tests/*
+# [2026-09-15 / TD-03 · D8] 단위 시험 소스(ServerTests)만 추적. LoggerSelfTest.cpp·출력물은 계속 로컬 전용
+!/Server/Tests/CMakeLists.txt
+!/Server/Tests/Unit/
 
 # [2026-09-14] 블로그 학습 글 양식·초안 — 로컬 전용 (사용자 결정)
 Docs/Blog/
