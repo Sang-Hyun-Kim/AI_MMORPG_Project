@@ -14,6 +14,13 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/LoggerSelfTest.cpp")
     # ctest 한 줄 실행: ctest -C Debug --output-on-failure
     add_test(NAME LoggerSelfTest COMMAND LoggerSelfTest --all)
     set_tests_properties(LoggerSelfTest PROPERTIES LABELS "selftest")
+
+    # [TD-03 · V42] 알려진 결함 고정: 워커 스레드 terminate 의 예외 메시지가 PANIC 에 기록되지 않음.
+    #   출력 문구로 판정(종료 코드 무시) — 도구 전제 실패(HARNESS-ERROR)가 통과로 섞이지 않게 WILL_FAIL 대신 사용.
+    #   V42 를 고치면 "V42 FIXED" 가 출력돼 실패 → 이 항목을 정상 기대로 바꾸고 known-bug 라벨을 뗄 것.
+    add_test(NAME V42.WorkerTerminateMessage COMMAND LoggerSelfTest --expect-worker-terminate)
+    set_tests_properties(V42.WorkerTerminateMessage PROPERTIES
+        PASS_REGULAR_EXPRESSION "V42 KNOWN-BUG CONFIRMED" LABELS "known-bug" TIMEOUT 120)
 endif()
 
 # [TD-03] ServerTests — doctest 단위 시험. GameServer 타깃과 분리(게임 서버 빌드에 끼지 않음)
@@ -27,11 +34,19 @@ add_executable(ServerTests
     Unit/LockFreeQueueTests.cpp
     Unit/RecvBufferTests.cpp
     Unit/FramingTests.cpp
+    Unit/DbPoolTests.cpp
 )
 
 # SectorMath.h 만 쓰기 위한 경로. GameRoom.h 는 include 하지 않습니다(GameServer 의존이 따라옴).
 target_include_directories(ServerTests PRIVATE ${CMAKE_SOURCE_DIR}/GameServer/Game/Room)
 target_link_libraries(ServerTests PRIVATE ServerCore doctest::doctest)
+# B3 시험용 DB 접속 정보는 로컬 Config.json 에서 읽습니다(자격증명을 시험 소스에 두지 않음).
+target_compile_definitions(ServerTests PRIVATE MMO_TEST_CONFIG_PATH="${CMAKE_SOURCE_DIR}/GameServer/Config.json")
+
+# [TD-03 · B3] 실제 MySQL 필요(라벨 db). Docker 없이 돌릴 때는 -LE db 로 명시적으로 제외.
+add_test(NAME Db.ConnectionLease COMMAND ServerTests --test-suite=DbPool)
+set_tests_properties(Db.ConnectionLease PROPERTIES LABELS "db" TIMEOUT 30
+    FAIL_REGULAR_EXPRESSION "test cases: +0 \\|")
 
 # 스위트 단위로 ctest 항목을 나눕니다. 라벨: unit · sabotage (+ selftest)
 foreach(suite Harness SectorMath LockFreeQueue RecvBuffer Framing)
