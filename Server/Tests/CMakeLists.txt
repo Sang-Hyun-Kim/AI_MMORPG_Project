@@ -24,6 +24,7 @@ add_executable(ServerTests
     Unit/HarnessTests.cpp
     Unit/SabotageTests.cpp
     Unit/SectorMathTests.cpp
+    Unit/LockFreeQueueTests.cpp
 )
 
 # SectorMath.h 만 쓰기 위한 경로. GameRoom.h 는 include 하지 않습니다(GameServer 의존이 따라옴).
@@ -31,9 +32,11 @@ target_include_directories(ServerTests PRIVATE ${CMAKE_SOURCE_DIR}/GameServer/Ga
 target_link_libraries(ServerTests PRIVATE ServerCore doctest::doctest)
 
 # 스위트 단위로 ctest 항목을 나눕니다. 라벨: unit · sabotage (+ selftest)
-foreach(suite Harness SectorMath)
+foreach(suite Harness SectorMath LockFreeQueue)
     add_test(NAME Unit.${suite} COMMAND ServerTests --test-suite=${suite})
     set_tests_properties(Unit.${suite} PROPERTIES LABELS "unit" TIMEOUT 120)
+    # 실행된 시험이 0개면 실패 — doctest 는 필터에 맞는 케이스가 없어도 SUCCESS 를 반환함(빌드 실패 후 이전 exe 가 돌면 "통과"로 오판)
+    set_tests_properties(Unit.${suite} PROPERTIES FAIL_REGULAR_EXPRESSION "test cases: +0 \\|")
 endforeach()
 
 # 하네스가 실패를 실제로 전달하는지 증명: 환경 변수로 무장한 스위트는 반드시 실패해야 함
