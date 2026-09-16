@@ -43,7 +43,35 @@ bool DBConnection::Connect(const std::string& host, int port, const std::string&
 
     // 인코딩 설정
     mysql_set_character_set(_conn, "utf8mb4");
+    TouchLastUsedTick(); // [TD-04 K2] 갓 연결된 커넥션은 "방금 쓴" 상태 — 첫 대여에서 불필요한 ping 을 피합니다
     return true;
+}
+
+bool DBConnection::IsAlive()
+{
+    if (_conn == nullptr)
+        return false;
+
+    return mysql_ping(_conn) == 0;
+}
+
+bool DBConnection::Reconnect()
+{
+    // 보관값은 Connect 가 같은 멤버에 다시 대입하므로, 자기 참조를 피하려 지역 복사본을 넘깁니다. [TD-04 K2]
+    const std::string host = _host;
+    const int port = _port;
+    const std::string user = _user;
+    const std::string password = _password; // ⚠️ 로그로 내보내지 마십시오
+    const std::string dbName = _dbName;
+    const DbReliabilityOptions options = _options;
+
+    Disconnect();
+    return Connect(host, port, user, password, dbName, options);
+}
+
+void DBConnection::TouchLastUsedTick()
+{
+    _lastUsedTick = ::GetTickCount64();
 }
 
 /*
@@ -185,6 +213,7 @@ bool DBConnectionPool::Connect(int32 connectionCount, const std::string& host, i
     for (int32 i = 0; i < connectionCount; i++)
     {
         auto connection = std::make_unique<DBConnection>();
+        connection->SetId(i); // [TD-04 K2] 상태 전이 로그에서 어느 커넥션인지 구분하기 위한 번호
         if (connection->Connect(host, port, user, password, dbName, _options) == false)
         {
             // 실패 사유(mysql_error)는 DBConnection::Connect 가 이미 ERROR 로 남겼습니다.
@@ -267,6 +296,51 @@ void DBConnectionPool::PushJob(std::function<void(DBConnection*)> job)
     _jobCv.notify_one();
 }
 
+/*
+ * EnsureHealthy
+ * 역할: 대여 직후 커넥션의 생존을 확인하고, 죽었으면 되살립니다. [TD-04 K2 · DB1]
+ * 데이터 흐름: ① 최근에 쓴 커넥션은 검사 생략(정상 부하에서 추가 왕복 0) → ② 오래 쉰 것만 ping →
+ *              ③ 죽었으면 상한 횟수만큼 재연결 → ④ 끝내 실패해도 **폐기하지 않는다**.
+ * ⚠️ 유지 지침: ④ 에서 커넥션을 버리면 풀 크기가 줄어(불변식 I1 위반) 결국 Pop() 에서 전 워커가
+ *    영구 대기합니다. 그리고 이 함수의 반환값으로 작업 실행을 건너뛰지 마십시오(불변식 I2).
+ */
+bool DBConnectionPool::EnsureHealthy(DBConnection* connection)
+{
+    if (connection == nullptr)
+        return false;
+
+    const uint64 idleMs = ::GetTickCount64() - connection->GetLastUsedTick();
+    if (_options.pingIdleMs != 0 && idleMs < _options.pingIdleMs)
+        return true; // 방금 쓴 커넥션 — 그 사이에 끊겼다면 쿼리 실패로 드러납니다
+
+    if (connection->IsAlive())
+    {
+        connection->TouchLastUsedTick();
+        return true;
+    }
+
+    // 여기부터가 "가동 중 끊김" 경로 — 상태 전이를 반드시 로그로 남깁니다(완료 기준 2 · 불변식 I3)
+    MLOG_WARN(Db) << "[DBConnectionPool] connection dead (ping failed) conn=" << connection->GetId()
+                  << " idleMs=" << idleMs << "; reconnecting";
+
+    for (int32 attempt = 1; attempt <= _options.reconnectAttempts; ++attempt)
+    {
+        if (connection->Reconnect())
+        {
+            MLOG_INFO(Db) << "[DBConnectionPool] reconnected conn=" << connection->GetId()
+                          << " attempts=" << attempt;
+            return true;
+        }
+
+        if (attempt < _options.reconnectAttempts)
+            std::this_thread::sleep_for(std::chrono::milliseconds(_options.reconnectBackoffMs));
+    }
+
+    MLOG_ERROR(Db) << "[DBConnectionPool] reconnect failed conn=" << connection->GetId()
+                   << "; kept in pool (size unchanged), job will run on a dead connection";
+    return false;
+}
+
 void DBConnectionPool::WorkerThread()
 {
     // 큐에 남은 작업을 모두 소진(Flush)하기 위해 무한 루프를 돌고 내부에서 탈출 조건을 체크합니다.
@@ -288,9 +362,12 @@ void DBConnectionPool::WorkerThread()
         ConnectionLease lease(*this, Pop());
         if (lease.conn)
         {
+            // [TD-04 K2] 결과와 무관하게 아래 job 은 반드시 실행한다 — 불변식 I2(결정 D11 (a)).
+            EnsureHealthy(lease.conn);
             try
             {
                 job(lease.conn);
+                lease.conn->TouchLastUsedTick();
             }
             catch (const std::exception& e)
             {

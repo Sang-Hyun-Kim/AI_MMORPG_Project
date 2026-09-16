@@ -36,6 +36,7 @@ add_executable(ServerTests
     Unit/RecvBufferTests.cpp
     Unit/FramingTests.cpp
     Unit/DbPoolTests.cpp
+    Unit/DbReliabilityTests.cpp
 )
 
 # SectorMath.h 만 쓰기 위한 경로. GameRoom.h 는 include 하지 않습니다(GameServer 의존이 따라옴).
@@ -47,6 +48,12 @@ target_compile_definitions(ServerTests PRIVATE MMO_TEST_CONFIG_PATH="${CMAKE_SOU
 # [TD-03 · B3] 실제 MySQL 필요(라벨 db). Docker 없이 돌릴 때는 -LE db 로 명시적으로 제외.
 add_test(NAME Db.ConnectionLease COMMAND ServerTests --test-suite=DbPool)
 set_tests_properties(Db.ConnectionLease PROPERTIES LABELS "db" TIMEOUT 30
+    FAIL_REGULAR_EXPRESSION "test cases: +0 \\|")
+
+# [TD-04 K2 · DB1] 건강 검사·재연결. 실제 MySQL 필요(라벨 db) — KILL·wait_timeout 으로 끊김을 만들므로
+#   Docker 컨테이너 조작 없이 결정적으로 재현된다. wait_timeout 케이스가 3.5초 쉬므로 TIMEOUT 은 넉넉히.
+add_test(NAME Db.Reliability COMMAND ServerTests --test-suite=DbReliability)
+set_tests_properties(Db.Reliability PROPERTIES LABELS "db" TIMEOUT 60
     FAIL_REGULAR_EXPRESSION "test cases: +0 \\|")
 
 # 스위트 단위로 ctest 항목을 나눕니다. 라벨: unit · sabotage (+ selftest)

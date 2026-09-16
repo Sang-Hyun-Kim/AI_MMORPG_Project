@@ -134,6 +134,27 @@ public:
     // (정도(正道)는 Prepared Statement이며 데모 후 과제로 기록되어 있습니다.)
     std::string EscapeString(const std::string& raw) const;
 
+    /*
+     * IsAlive — 서버가 이 커넥션을 아직 살려 두었는지 왕복 1회로 확인합니다. [TD-04 K2]
+     *   mysql_ping 은 0 이면 정상입니다. 여기서는 **판정만** 하고 재연결은 Reconnect() 가 명시적으로 합니다
+     *   (libmysql 의 자동 재연결은 세션 변수·트랜잭션·임시 테이블을 조용히 잃는 것이 알려진 함정입니다).
+     */
+    bool IsAlive();
+
+    /*
+     * Reconnect — 끊어진 커넥션을 보관한 접속 정보로 다시 세웁니다. [TD-04 K2]
+     *   실패해도 객체는 유효하며 호출자는 이것을 폐기하지 않습니다 — 풀 크기 불변식(I1).
+     */
+    bool Reconnect();
+
+    // 로그에서 어느 커넥션이 죽었다 살아났는지 구분하기 위한 번호(풀이 Connect 때 0..N-1 로 부여). [TD-04 K2]
+    int32 GetId() const { return _id; }
+    void SetId(int32 id) { _id = id; }
+
+    // 마지막으로 쓰인 시각. PingIdleMs 보다 짧게 쉬었으면 ping 을 생략합니다. [TD-04 K2]
+    uint64 GetLastUsedTick() const { return _lastUsedTick; }
+    void TouchLastUsedTick();
+
     MYSQL* GetRawConnection() { return _conn; }
 
 private:
@@ -142,6 +163,8 @@ private:
 
 private:
     MYSQL* _conn = nullptr;
+    int32 _id = -1;
+    uint64 _lastUsedTick = 0;
 
     // [TD-04 K1] 재연결(K2)용 보관값 — ⚠️ _password 를 로그로 내보내지 마십시오.
     std::string _host;
@@ -197,6 +220,14 @@ public:
 
 private:
     void WorkerThread();
+
+    /*
+     * EnsureHealthy — 대여한 커넥션이 쓸 수 있는 상태인지 확인하고, 아니면 되살립니다. [TD-04 K2 · DB1]
+     *   ⚠️ false 를 반환해도 호출자는 **작업을 건너뛰지 않습니다**(불변식 I2 · 결정 D11 (a)).
+     *      작업을 건너뛰면 DBAwaitable 의 resume 이 실행되지 않아 코루틴이 영구 미재개 상태가 되고,
+     *      그것이 바로 이 모듈이 없애려는 "무응답"입니다.
+     */
+    bool EnsureHealthy(DBConnection* connection);
 
     // [TD-02 B3] 대여한 커넥션을 스코프 종료 시 반드시 반납합니다(작업 예외와 무관하게 풀 크기 유지).
     struct ConnectionLease
