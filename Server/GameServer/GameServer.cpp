@@ -14,6 +14,10 @@
 // 서버 실행 상태를 제어하는 전역 플래그
 std::atomic<bool> GIsRunning = true;
 
+// [TD-04 K1 · D1 (c)] MySQL 기동 실패 시의 종료 코드. 크래시(0xC…)가 아닌 정상 종료 값이므로
+//   운영·시험 스크립트가 "DB 때문에 못 떴다"를 다른 실패와 구분할 수 있습니다.
+constexpr int kExitDbUnavailable = 2;
+
 /*
  * ConsoleCtrlHandler
  * 역할: 콘솔 창 닫기(X버튼)나 Ctrl+C(SIGINT) 등 종료 시그널을 가로채는 핸들러
@@ -79,17 +83,25 @@ int main() {
     MLOG_ERROR(Redis) << "Redis Connect Failed!";
   }
 
+  // [TD-04 K1 · D1 (c)] MySQL 은 기동 필수 자원입니다. 리슨(service->Start()) **전에** 종료하므로
+  //   클라이언트가 붙었다가 무응답에 빠지는 창이 아예 없습니다. 변경 전에는 연결 실패에도 서버가 떠서,
+  //   입장 요청이 DB 워커(0개)를 기다리며 영구 미재개 → 끊김도 응답도 없는 상태였습니다(부채 DB2).
+  //   ⚠️ Redis 는 정책이 다릅니다(위 :78) — 기동 실패에도 뜨고 Handle_C_LOGIN 이 거절합니다.
+  //      거절 경로가 있는 자원과 없는 자원의 차이입니다(Code_Specification 18.1).
   if (!GDBConnectionPool->Connect(
           5, // Connection Count
           GConfigManager->databaseConfig.mySqlHost,
           GConfigManager->databaseConfig.mySqlPort,
           GConfigManager->databaseConfig.mySqlUser,
           GConfigManager->databaseConfig.mySqlPassword,
-          GConfigManager->databaseConfig.mySqlDatabase)) {
-    MLOG_ERROR(Db) << "MySQL Connect Failed!";
-  } else {
-    MLOG_INFO(Db) << "MySQL Connected Successfully.";
+          GConfigManager->databaseConfig.mySqlDatabase,
+          GConfigManager->databaseConfig.mySqlReliability)) {
+    MLOG_ERROR(Db)
+        << "MySQL Connect Failed! MySQL is required at startup. Shutting down.";
+    Logger::Flush(); // 비동기 큐의 마지막 ERROR 를 파일에 남기고 나간다
+    return kExitDbUnavailable;
   }
+  MLOG_INFO(Db) << "MySQL Connected Successfully.";
 
   // [B1] 리슨 주소를 Config.json의 Server.BindAddress에서 읽습니다.
   // 과거에는 L"127.0.0.1"이 하드코딩되어 있어, AWS EC2에 배포해도 루프백에만

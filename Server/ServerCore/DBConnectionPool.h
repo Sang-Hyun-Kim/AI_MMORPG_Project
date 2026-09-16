@@ -1,5 +1,6 @@
 #pragma once
 #include "CorePch.h"
+#include "ConfigManager.h" // [TD-04 K1] DbReliabilityOptions (기본값 정본은 이 헤더에 있습니다)
 #include <mysql/mysql.h>
 #include <string>
 #include <queue>
@@ -89,7 +90,14 @@ public:
     DBConnection();
     ~DBConnection();
 
-    bool Connect(const std::string& host, int port, const std::string& user, const std::string& password, const std::string& dbName);
+    /*
+     * Connect — 접속 정보를 보관한 뒤 연결하고, 타임아웃 3종을 적용합니다. [TD-04 K1]
+     *   보관 이유: 재연결(K2 Reconnect)에 같은 접속 정보가 다시 필요합니다. 인자를 어디에도
+     *   남기지 않던 것이 "죽은 커넥션을 되살릴 방법이 없다"(부채 DB1)의 근본 원인이었습니다.
+     *   ⚠️ 보관값에 password 가 포함됩니다. 어떤 로그·예외 메시지에도 쓰지 마십시오.
+     */
+    bool Connect(const std::string& host, int port, const std::string& user, const std::string& password, const std::string& dbName,
+                 const DbReliabilityOptions& options = {});
     void Disconnect();
 
     /*
@@ -129,7 +137,19 @@ public:
     MYSQL* GetRawConnection() { return _conn; }
 
 private:
+    // [TD-04 K1] mysql_options 3종. mysql_real_connect **전에만** 효력이 있습니다.
+    void ApplyOptions(const DbReliabilityOptions& options);
+
+private:
     MYSQL* _conn = nullptr;
+
+    // [TD-04 K1] 재연결(K2)용 보관값 — ⚠️ _password 를 로그로 내보내지 마십시오.
+    std::string _host;
+    int _port = 0;
+    std::string _user;
+    std::string _password;
+    std::string _dbName;
+    DbReliabilityOptions _options{};
 };
 
 /*
@@ -155,7 +175,14 @@ public:
     DBConnectionPool(const DBConnectionPool&) = delete;
     DBConnectionPool& operator=(const DBConnectionPool&) = delete;
 
-    bool Connect(int32 connectionCount, const std::string& host, int port, const std::string& user, const std::string& password, const std::string& dbName);
+    /*
+     * Connect — 커넥션 N개를 만든 뒤 워커 N개를 띄웁니다.
+     *   [TD-04 K1] 계약: **false 를 반환할 때는 자원을 하나도 남기지 않습니다.**
+     *   변경 전에는 i 번째에서 실패하면 앞서 만든 i개가 풀에 남고 워커는 0개인 반쪽 상태가 되어,
+     *   서버가 뜬 뒤 입장 요청이 영구 미재개(무응답)에 빠졌습니다(부채 DB2).
+     */
+    bool Connect(int32 connectionCount, const std::string& host, int port, const std::string& user, const std::string& password, const std::string& dbName,
+                 const DbReliabilityOptions& options = {});
     void Clear();
 
     // 동기식 직접 획득: 사용 가능한 커넥션이 없으면 블로킹(대기)됩니다.
@@ -184,6 +211,9 @@ private:
     };
 
 private:
+    // [TD-04 K1] Connect 에서 채워지고 이후 가동 중 불변입니다(K2 건강 검사가 읽습니다).
+    DbReliabilityOptions _options{};
+
     std::mutex _lock;
     std::condition_variable _cv;
     std::queue<DBConnection*> _connections;

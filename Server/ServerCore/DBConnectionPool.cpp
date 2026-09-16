@@ -16,12 +16,23 @@ DBConnection::~DBConnection()
     Disconnect();
 }
 
-bool DBConnection::Connect(const std::string& host, int port, const std::string& user, const std::string& password, const std::string& dbName)
+bool DBConnection::Connect(const std::string& host, int port, const std::string& user, const std::string& password, const std::string& dbName,
+                           const DbReliabilityOptions& options)
 {
     if (_conn == nullptr)
     {
         _conn = mysql_init(nullptr);
     }
+
+    // [TD-04 K1] 재연결(K2)에 필요하므로 접속 정보를 보관합니다. ⚠️ _password 는 로그 금지.
+    _host = host;
+    _port = port;
+    _user = user;
+    _password = password;
+    _dbName = dbName;
+    _options = options;
+
+    ApplyOptions(_options);
 
     MYSQL* ret = mysql_real_connect(_conn, host.c_str(), user.c_str(), password.c_str(), dbName.c_str(), port, nullptr, 0);
     if (ret == nullptr)
@@ -33,6 +44,31 @@ bool DBConnection::Connect(const std::string& host, int port, const std::string&
     // 인코딩 설정
     mysql_set_character_set(_conn, "utf8mb4");
     return true;
+}
+
+/*
+ * ApplyOptions
+ * 역할: 타임아웃 3종을 커넥션에 적용합니다. [TD-04 K1]
+ * ⚠️ 반드시 mysql_real_connect **전에** 호출해야 합니다. 특히 접속 타임아웃이 없으면
+ *    호스트가 응답하지 않을 때 OS TCP 기본값(수십 초) × 커넥션 수만큼 기동이 매달려
+ *    "기동 Fail-Fast" 라는 이름이 무의미해집니다.
+ */
+void DBConnection::ApplyOptions(const DbReliabilityOptions& options)
+{
+    if (_conn == nullptr)
+        return;
+
+    // 0 이하는 "무제한"이 되어 위 위험이 되살아나므로 최소 1초로 보정합니다.
+    const unsigned int connectSec = static_cast<unsigned int>(options.connectTimeoutSec > 0 ? options.connectTimeoutSec : 1);
+    const unsigned int readSec = static_cast<unsigned int>(options.readTimeoutSec > 0 ? options.readTimeoutSec : 1);
+    const unsigned int writeSec = static_cast<unsigned int>(options.writeTimeoutSec > 0 ? options.writeTimeoutSec : 1);
+
+    if (mysql_options(_conn, MYSQL_OPT_CONNECT_TIMEOUT, &connectSec) != 0 ||
+        mysql_options(_conn, MYSQL_OPT_READ_TIMEOUT, &readSec) != 0 ||
+        mysql_options(_conn, MYSQL_OPT_WRITE_TIMEOUT, &writeSec) != 0)
+    {
+        MLOG_WARN(Db) << "MySQL timeout options not fully applied: " << mysql_error(_conn);
+    }
 }
 
 void DBConnection::Disconnect()
@@ -135,27 +171,53 @@ DBConnectionPool::~DBConnectionPool()
     Clear();
 }
 
-bool DBConnectionPool::Connect(int32 connectionCount, const std::string& host, int port, const std::string& user, const std::string& password, const std::string& dbName)
+bool DBConnectionPool::Connect(int32 connectionCount, const std::string& host, int port, const std::string& user, const std::string& password, const std::string& dbName,
+                               const DbReliabilityOptions& options)
 {
+    _options = options;
+
+    // [TD-04 K1] 실패 시 "지금까지 만든 것"을 전부 되돌리기 위해 지역 컨테이너에 모았다가 한 번에 옮깁니다.
+    //   중간에 예외가 끼어들어도 unique_ptr 소멸자가 정리하므로 "false 를 반환하면 자원 0" 계약이
+    //   코드 구조 자체로 보장됩니다. 여기를 raw 포인터로 되돌리지 마십시오.
+    std::vector<std::unique_ptr<DBConnection>> made;
+    made.reserve(static_cast<size_t>(connectionCount));
+
     for (int32 i = 0; i < connectionCount; i++)
     {
-        DBConnection* connection = new DBConnection();
-        if (connection->Connect(host, port, user, password, dbName) == false)
+        auto connection = std::make_unique<DBConnection>();
+        if (connection->Connect(host, port, user, password, dbName, _options) == false)
         {
-            delete connection;
-            return false;
+            // 실패 사유(mysql_error)는 DBConnection::Connect 가 이미 ERROR 로 남겼습니다.
+            // 여기서는 "몇 개째에서 멈췄는가"만 더합니다 — ⚠️ password 는 절대 쓰지 않습니다.
+            MLOG_ERROR(Db) << "[DBConnectionPool] startup connect failed at " << (i + 1) << "/" << connectionCount
+                           << " host=" << host << ":" << port << " db=" << dbName;
+            return false; // made 의 소멸자가 앞서 만든 커넥션 전부를 닫습니다
         }
 
-        _connections.push(connection);
+        made.push_back(std::move(connection));
     }
 
-    // Worker Threads 시작
+    {
+        std::lock_guard<std::mutex> lock(_lock);
+        for (std::unique_ptr<DBConnection>& c : made)
+            _connections.push(c.release()); // 소유권을 풀로 이전(기존 raw 포인터 관리 방식 유지)
+    }
+
+    // Worker Threads 시작 — 커넥션이 전부 준비된 뒤에만 도달합니다.
     for (int32 i = 0; i < connectionCount; i++)
     {
         // [TD-01] 워커에 이름(DB-1..N)을 붙여 어느 워커가 코루틴을 재개했는지 로그로 구분합니다.
+        // ⚠️ [TD-04 K0] SetThreadName 은 terminate 핸들러 설치까지 겸합니다. 제거하지 마십시오(V42 재발).
         _workerThreads.push_back(std::thread([this, i]() { Logger::SetThreadName("DB", i + 1); WorkerThread(); }));
     }
 
+    // [TD-04 K1] 적용된 실효 정책값을 기동 로그에 남깁니다 — 설정을 바꿨는지/먹었는지를
+    //   Debug·Release 어느 쪽에서도 로그만으로 확인할 수 있어야 합니다.
+    MLOG_INFO(Db) << "[DBConnectionPool] connected pool=" << connectionCount
+                  << " host=" << host << ":" << port << " db=" << dbName
+                  << " connectTimeout=" << _options.connectTimeoutSec << "s read=" << _options.readTimeoutSec
+                  << "s write=" << _options.writeTimeoutSec << "s pingIdle=" << _options.pingIdleMs
+                  << "ms reconnect=" << _options.reconnectAttempts << "x" << _options.reconnectBackoffMs << "ms";
     return true;
 }
 

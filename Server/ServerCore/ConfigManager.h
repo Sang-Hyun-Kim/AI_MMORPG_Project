@@ -15,16 +15,36 @@ struct ServerConfig
     int32 maxSession = 1000;    // 최대 동시 접속 허용 세션 수
 };
 
+/*
+ * DbReliabilityOptions
+ * 역할: MySQL 커넥션의 타임아웃·건강 검사·재연결 정책값 묶음입니다. [TD-04 K1]
+ * ⚠️ 이 구조체의 초기값이 **배포 기본값의 정본**입니다. Config.json 은 .gitignore 로 로컬 전용이라
+ *    새 환경에는 파일이 없고, 그때도 서버가 같은 정책으로 동작해야 합니다. 기본값을 다른 곳에
+ *    복제하지 마십시오(ConfigManager 파싱은 "키가 없으면 현재 값 유지" 방식입니다).
+ */
+struct DbReliabilityOptions
+{
+    int32 connectTimeoutSec = 3;      // MYSQL_OPT_CONNECT_TIMEOUT — 기동 Fail-Fast 를 빠르게
+    int32 readTimeoutSec = 10;        // MYSQL_OPT_READ_TIMEOUT — 죽은 소켓에 워커가 매달리는 것 방지
+    int32 writeTimeoutSec = 10;       // MYSQL_OPT_WRITE_TIMEOUT
+    uint64 pingIdleMs = 30000;        // [K2] 이보다 오래 쉰 커넥션만 대여 시 ping (0 = 항상)
+    int32 reconnectAttempts = 2;      // [K2] 대여 1회당 재연결 시도 상한
+    int32 reconnectBackoffMs = 200;   // [K2] 시도 간 대기
+};
+
 // 데이터베이스(MySQL, Redis) 접속 문자열 및 설정 정보
 struct DatabaseConfig
 {
     // MySQL 접속 정보 (하드코딩 방지)
-    std::string mySqlHost;      
+    std::string mySqlHost;
     int32 mySqlPort = 3306;
     std::string mySqlUser;
     std::string mySqlPassword;
     std::string mySqlDatabase;
-    
+
+    // [TD-04 K1] MySQL 신뢰성 정책. Database.MySQL 섹션의 키 6개로 덮어쓸 수 있습니다.
+    DbReliabilityOptions mySqlReliability;
+
     // Redis 접속 정보 (예: tcp://127.0.0.1:6379)
     std::string redisString;
 };

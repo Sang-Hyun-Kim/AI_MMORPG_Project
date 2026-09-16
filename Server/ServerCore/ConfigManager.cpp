@@ -42,6 +42,16 @@ bool ConfigManager::Init(const std::string& path)
                 databaseConfig.mySqlUser = mysqlJson.value("User", "root");
                 databaseConfig.mySqlPassword = mysqlJson.value("Password", "");
                 databaseConfig.mySqlDatabase = mysqlJson.value("Database", "");
+
+                // [TD-04 K1] 신뢰성 키 6개. 기본값 정본은 DbReliabilityOptions 이므로
+                //   여기서는 "키가 없으면 현재 값 유지"로 넘겨 기본값 복제를 피합니다.
+                DbReliabilityOptions& rel = databaseConfig.mySqlReliability;
+                rel.connectTimeoutSec = mysqlJson.value("ConnectTimeoutSec", rel.connectTimeoutSec);
+                rel.readTimeoutSec = mysqlJson.value("ReadTimeoutSec", rel.readTimeoutSec);
+                rel.writeTimeoutSec = mysqlJson.value("WriteTimeoutSec", rel.writeTimeoutSec);
+                rel.pingIdleMs = mysqlJson.value("PingIdleMs", rel.pingIdleMs);
+                rel.reconnectAttempts = mysqlJson.value("ReconnectAttempts", rel.reconnectAttempts);
+                rel.reconnectBackoffMs = mysqlJson.value("ReconnectBackoffMs", rel.reconnectBackoffMs);
             }
             databaseConfig.redisString = j["Database"].value("Redis", "");
         }
