@@ -853,7 +853,8 @@ namespace
 		}
 		PanicFlush(reason.c_str());
 
-		if (gPrevTerminate != nullptr)
+		// [TD-04 K0] 자기 자신을 이전 핸들러로 부르면 무한 재귀 → 스택 오버플로. 설치 순서와 무관하게 막습니다.
+		if (gPrevTerminate != nullptr && gPrevTerminate != &OnTerminate)
 			gPrevTerminate();
 		std::abort();
 	}
@@ -867,7 +868,10 @@ namespace
 	void InstallCrashHandlers() noexcept
 	{
 		gPrevExceptionFilter = ::SetUnhandledExceptionFilter(&OnUnhandledException);
-		gPrevTerminate = std::set_terminate(&OnTerminate);
+		// [TD-04 K0] MAIN 이 Init 전에 SetThreadName 을 부르면 이전 핸들러가 이미 OnTerminate 다.
+		//            그대로 보관하면 OnTerminate 가 자기를 다시 부른다.
+		if (const std::terminate_handler prev = std::set_terminate(&OnTerminate); prev != &OnTerminate)
+			gPrevTerminate = prev;
 		gPrevAbortHandler = std::signal(SIGABRT, &OnAbortSignal);
 	}
 
@@ -999,8 +1003,19 @@ void Logger::Flush() noexcept
 	s.file.Flush(false);
 }
 
+// [TD-04 K0 · V42] MSVC CRT 의 terminate 핸들러는 스레드별이다(MS Learn, set_terminate).
+//   프로세스 전역인 SEH 필터·SIGABRT 는 Init 의 설치가 그대로 유효하므로 여기서는 set_terminate 만 다시 세운다.
+//   gPrevTerminate 는 MAIN 의 것이므로 건드리지 않는다.
+void Logger::InstallThreadCrashHandlers() noexcept
+{
+	std::set_terminate(&OnTerminate);
+}
+
 void Logger::SetThreadName(std::string_view name) noexcept
 {
+	// [TD-04 K0] 이름 설정과 함께 이 스레드를 로거에 등록한다 — 지우면 워커 terminate 메시지가 유실된다(V42).
+	InstallThreadCrashHandlers();
+
 	std::size_t n = 0;
 	for (; n < name.size() && n < kThreadNameMax; ++n)
 	{

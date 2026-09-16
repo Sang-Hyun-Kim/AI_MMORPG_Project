@@ -15,12 +15,13 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/LoggerSelfTest.cpp")
     add_test(NAME LoggerSelfTest COMMAND LoggerSelfTest --all)
     set_tests_properties(LoggerSelfTest PROPERTIES LABELS "selftest")
 
-    # [TD-03 · V42] 알려진 결함 고정: 워커 스레드 terminate 의 예외 메시지가 PANIC 에 기록되지 않음.
-    #   출력 문구로 판정(종료 코드 무시) — 도구 전제 실패(HARNESS-ERROR)가 통과로 섞이지 않게 WILL_FAIL 대신 사용.
-    #   V42 를 고치면 "V42 FIXED" 가 출력돼 실패 → 이 항목을 정상 기대로 바꾸고 known-bug 라벨을 뗄 것.
+    # [TD-04 K0 · V42 해소] 워커 스레드 terminate 의 예외 메시지가 PANIC 에 기록되는지 — 이제 **정상 기대**.
+    #   출력 문구로 판정(종료 코드 무시) — 자식이 크래시로 끝나므로 종료 코드는 0 이 아니다.
+    #   이 항목이 실패하면 스레드별 terminate 핸들러 설치가 사라진 것(회귀): Logger::SetThreadName →
+    #   InstallThreadCrashHandlers 경로를 먼저 확인할 것. (TD-03 당시 기대값은 "V42 KNOWN-BUG CONFIRMED")
     add_test(NAME V42.WorkerTerminateMessage COMMAND LoggerSelfTest --expect-worker-terminate)
     set_tests_properties(V42.WorkerTerminateMessage PROPERTIES
-        PASS_REGULAR_EXPRESSION "V42 KNOWN-BUG CONFIRMED" LABELS "known-bug" TIMEOUT 120)
+        PASS_REGULAR_EXPRESSION "V42 FIXED" LABELS "selftest" TIMEOUT 120)
 endif()
 
 # [TD-03] ServerTests — doctest 단위 시험. GameServer 타깃과 분리(게임 서버 빌드에 끼지 않음)

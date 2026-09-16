@@ -102,7 +102,15 @@ public:
 		return static_cast<std::uint8_t>(level) >= sMinLevel.load(std::memory_order_relaxed);
 	}
 
-	// 현재 스레드의 표기 이름(최대 15자). 스레드 함수 첫 줄에서 호출합니다.
+	// [TD-04 K0 · V42] 호출한 스레드에 terminate 핸들러를 설치합니다.
+	//   MSVC CRT 의 terminate 핸들러는 스레드별이라 Init(MAIN)의 설치가 워커에 적용되지 않습니다.
+	//   빠지면 워커의 미처리 예외가 PANIC: SIGABRT (abort) 한 줄만 남기고 what() 이 사라집니다.
+	//   멱등 — 이름을 붙이는 스레드는 SetThreadName 이 대신 호출하므로 따로 부를 필요가 없습니다.
+	static void InstallThreadCrashHandlers() noexcept;
+
+	// 이 스레드를 로거에 등록합니다 — 표기 이름(최대 15자) + 크래시 핸들러. 스레드 함수 첫 줄에서 호출합니다.
+	//   ⚠️ [TD-04 K0] 이름 설정만 하는 함수가 아닙니다. 내부의 InstallThreadCrashHandlers() 호출을 빼면
+	//      워커 terminate 메시지가 다시 유실됩니다(V42 · ctest V42.WorkerTerminateMessage 가 감시).
 	static void SetThreadName(std::string_view name) noexcept;
 	static void SetThreadName(std::string_view prefix, int index) noexcept;  // ("DB", 3) → "DB-3"
 

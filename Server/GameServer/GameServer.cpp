@@ -38,6 +38,17 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD dwCtrlType) {
 }
 
 int main() {
+#ifdef _DEBUG
+  // [TD-04 K0 · V42] Debug CRT 는 SIGABRT 를 올리기 전에 "abort() has been called" 창을 띄우고 그 스레드를
+  //   사람이 버튼을 누를 때까지 멈춥니다 → 무인 Debug 서버가 죽지도 살지도 않는 좀비가 됩니다.
+  //   억제하면 PANIC 레코드를 남기고 즉시 종료합니다. JIT 디버거로 붙어야 할 때만 MMO_ABORT_DIALOG=1.
+  char abortDialog[8] = {};
+  if (::GetEnvironmentVariableA("MMO_ABORT_DIALOG", abortDialog, sizeof(abortDialog)) == 0) {
+    _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+    _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_DEBUG);
+  }
+#endif
+
   // [TD-01] 로거를 가장 먼저 켭니다. 설정 로드 실패 로그도 파일에 남기기 위함입니다.
   Logger::SetThreadName("MAIN");
   Logger::Init({ .programName = "GameServer" });
