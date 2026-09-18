@@ -10,6 +10,14 @@ services:
       - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      # [TD-04 K4] 게임 DB 정본 스키마를 새 볼륨 첫 기동 시 자동 적용합니다 (부채 DB6 · 결정 D13 (a)).
+      # ⚠️ 사본을 만들지 마십시오 — Server/schema.sql 이 Player·Mailbox DDL 의 유일한 정본입니다.
+      # ⚠️ initdb 는 데이터 디렉터리가 빈 경우에만 실행됩니다. 이미 초기화된 볼륨에는
+      #    아무 일도 일어나지 않으므로 Infra/db_bootstrap.ps1 로 적용하십시오.
+      # ⚠️ seed_accounts.sql 은 넣지 마십시오 — Account 테이블(WebBackend 가 생성)이 없어 초기화가 실패합니다.
+      # ⚠️ Windows(Docker Desktop Hyper-V 백엔드): 이 저장소 경로가 Settings → Resources → File sharing
+      #    에 등록돼 있어야 합니다. 미등록이면 컨테이너 생성이 에러 없이 무한 대기합니다(2026-09-18 실측).
+      - ../Server/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
 
   redis:
     image: redis:alpine
