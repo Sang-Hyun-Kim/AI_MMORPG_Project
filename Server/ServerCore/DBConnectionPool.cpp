@@ -2,6 +2,19 @@
 #include "DBConnectionPool.h"
 #include <iostream>
 
+namespace
+{
+    // DB 워커 스레드의 mysql_thread_init / mysql_thread_end 짝을 RAII 로 맞춥니다. [TD-04 K3 · DB7]
+    // ⚠️ 지우면 재연결(mysql_init)한 워커마다 스레드별 블록이 해제되지 않습니다(Debug libmysql 실측 96 bytes/스레드).
+    struct MySqlThreadScope
+    {
+        MySqlThreadScope() { ::mysql_thread_init(); }
+        ~MySqlThreadScope() { ::mysql_thread_end(); }
+        MySqlThreadScope(const MySqlThreadScope&) = delete;
+        MySqlThreadScope& operator=(const MySqlThreadScope&) = delete;
+    };
+}
+
 /*----------------
     DBConnection
 ----------------*/
@@ -237,7 +250,11 @@ bool DBConnectionPool::Connect(int32 connectionCount, const std::string& host, i
     {
         // [TD-01] 워커에 이름(DB-1..N)을 붙여 어느 워커가 코루틴을 재개했는지 로그로 구분합니다.
         // ⚠️ [TD-04 K0] SetThreadName 은 terminate 핸들러 설치까지 겸합니다. 제거하지 마십시오(V42 재발).
-        _workerThreads.push_back(std::thread([this, i]() { Logger::SetThreadName("DB", i + 1); WorkerThread(); }));
+        _workerThreads.push_back(std::thread([this, i]() {
+            Logger::SetThreadName("DB", i + 1);
+            MySqlThreadScope mysqlThread; // [TD-04 K3] WorkerThread 의 모든 return 경로에서 mysql_thread_end 보장
+            WorkerThread();
+        }));
     }
 
     // [TD-04 K1] 적용된 실효 정책값을 기동 로그에 남깁니다 — 설정을 바꿨는지/먹었는지를
